@@ -5,7 +5,3 @@
 :443 {
 	respond "SSL Hello, world!"
 }
-
-:999 {
-	reverse_proxy home-assistant.spaniel-dragon.ts.net
-}
