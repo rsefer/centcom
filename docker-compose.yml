@@ -1,6 +1,7 @@
 ---
 
 services:
+
   tsdproxy:
     image: almeidapaulopt/tsdproxy:latest
     container_name: tsdproxy
@@ -12,6 +13,24 @@ services:
       - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
       - DOCKER_HOST=unix:///var/run/docker.sock
     restart: unless-stopped
+
+  caddy:
+    image: caddy
+    container_name: caddy
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "caddy"
+    hostname: caddy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/caddy_config:/config
+      - ./caddy/caddy_data:/data
 
   timemachine:
     image: mbentley/timemachine:smb
@@ -46,3 +65,8 @@ services:
 
 volumes:
   tsdproxydata:
+
+networks:
+  default:
+    name: caddy_net
+    external: true

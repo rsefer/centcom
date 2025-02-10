@@ -1,0 +1,7 @@
+:80 {
+	respond "HTTP Hello, world!"
+}
+
+:443 {
+	respond "SSL Hello, world!"
+}
