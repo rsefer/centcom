@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - /dev/sda:/opt/timemachine
+      - /dev/sda1:/opt/timemachine
     tmpfs:
       - /run/samba
     ulimits:
