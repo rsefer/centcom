@@ -41,14 +41,13 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
-      - TM_GROUPNAME=${SMB_NAME}
-      - TM_USERNAME=${SMB_USER}
-      - PASSWORD=${SMB_PASSWORD}
-      - TM_PASSWORD=${SMB_PASSWORD}
+      - TM_USERNAME=backupuser
+      - TM_GROUPNAME=timemachine
+      - TM_PASSWORD=your_secure_password
       - TM_SHARE_NAME=TimeMachine
-      - TM_SIZE_LIMIT=931G  # Adjust as needed
-      - TM_VOLSIZE_LIMIT=931G  # Adjust to match TM_SIZE_LIMIT
-      - SMB_CONF_GLOBAL="[TimeMachine] \n path = /opt/timemachine \n valid users = ${SMB_USER}"
+      - TM_SIZE_LIMIT=500G  # Adjust as needed
+      - TM_VOLSIZE_LIMIT=500G  # Adjust to match TM_SIZE_LIMIT
+      - AFPD_OPTIONS=-mimicmodel TimeCapsule6,106
       - AVAHI_NAME=RaspberryPiTimeMachine
       - AVAHI_HOST_NAME=raspberrypi-timemachine
       - AFPD_UAMLIST=-U uams_dhx2.so
