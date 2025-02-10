@@ -48,7 +48,7 @@ services:
       - TM_SHARE_NAME=TimeMachine
       - TM_SIZE_LIMIT=931G  # Adjust as needed
       - TM_VOLSIZE_LIMIT=931G  # Adjust to match TM_SIZE_LIMIT
-      - AFPD_OPTIONS=-mimicmodel TimeCapsule6,106
+      - SMB_CONF_GLOBAL="[TimeMachine] \n path = /opt/timemachine \n valid users = ${SMB_USER}"
       - AVAHI_NAME=RaspberryPiTimeMachine
       - AVAHI_HOST_NAME=raspberrypi-timemachine
       - AFPD_UAMLIST=-U uams_dhx2.so
