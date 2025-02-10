@@ -1,10 +1,4 @@
 ---
-# - Spin up default raspian image
-# - Install tailscale normally on device
-# - Install docker
-# - Create Tailscale API key
-# - Fill in .env
-# - Run `docker compose up`
 
 services:
   tsdproxy:
