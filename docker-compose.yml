@@ -35,24 +35,20 @@ services:
   timemachine:
     image: mbentley/timemachine:latest
     container_name: timemachine
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "timemachine"
     restart: unless-stopped
-    network_mode: host
+    network_mode: host  # Required for proper network discovery via Avahi
     environment:
-      - TM_USERNAME=backupuser
+      - TM_USERNAME=backupuser  # Change this to your preferred username
       - TM_GROUPNAME=timemachine
-      - TM_PASSWORD=your_secure_password
-      - TM_SHARE_NAME=TimeMachine
-      - TM_SIZE_LIMIT=500G  # Adjust as needed
-      - TM_VOLSIZE_LIMIT=500G  # Adjust to match TM_SIZE_LIMIT
-      - AFPD_OPTIONS=-mimicmodel TimeCapsule6,106
-      - AVAHI_NAME=RaspberryPiTimeMachine
-      - AVAHI_HOST_NAME=raspberrypi-timemachine
-      - AFPD_UAMLIST=-U uams_dhx2.so
+      - TM_PASSWORD=your_secure_password  # Change this to a strong password
+      - TM_UID=1000
+      - TM_GID=1000
+      - SHARE_NAME=TimeMachine
+      - TM_SIZE_LIMIT=500G  # Adjust this to limit the Time Machine backup size
+      - EXTERNAL_CONF=false
+      - SMB_INHERIT_PERMISSIONS=true
     volumes:
-      - /mnt/timemachine:/opt/timemachine
+      - /mnt/timemachine:/opt/timemachine  # Ensure your SSD is mounted at /mnt/timemachine
     privileged: true
 
 volumes:
