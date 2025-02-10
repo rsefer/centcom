@@ -25,6 +25,7 @@ services:
       - "139:139"
       - "445:445"
     environment:
+      - SHARE_NAME=${SMB_NAME}
       - TM_GROUPNAME=${SMB_NAME}
       - TM_USERNAME=${SMB_USER}
       - PASSWORD=${SMB_PASSWORD}
