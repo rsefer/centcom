@@ -8,15 +8,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - tsdproxydata:/data
     environment:
-      # Get AuthKey from your Tailscale account
       - TSDPROXY_AUTHKEY=${TSDPROXY_AUTHKEY}
-      # Address of docker server (access to example.com ports)
       - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
       - DOCKER_HOST=unix:///var/run/docker.sock
     restart: unless-stopped
 
   timemachine:
-    image: msjpq/time-machine
+    image: mbentley/timemachine:smb
     container_name: time-machine
     labels:
       tsdproxy.enable: "true"
@@ -27,14 +25,23 @@ services:
       - "139:139"
       - "445:445"
     environment:
-      - SMB_NAME=${SMB_NAME}
-      - SMB_USER=${SMB_USER}
-      - SMB_PASSWORD=${SMB_PASSWORD}
+      - TM_GROUPNAME=${SMB_NAME}
+      - TM_USERNAME=${SMB_USER}
+      - PASSWORD=${SMB_PASSWORD}
+      - TM_UID=1000
+      - TM_GID=1000
+      - SET_PERMISSIONS=false
+      - VOLUME_SIZE_LIMIT=0
     restart: unless-stopped
     network_mode: host
     volumes:
-      - timemachine-data:/share
+      - /dev/sda:/opt/timemachine
+    tmpfs:
+      - /run/samba
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
 volumes:
   tsdproxydata:
-  timemachine-data:
