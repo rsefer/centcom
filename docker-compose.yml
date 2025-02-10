@@ -1,0 +1,43 @@
+---
+# - Spin up default raspian image
+# - Install tailscale normally on device
+# - Install docker
+# - Create Tailscale API key
+# - Fill in .env
+# - Run `docker compose up`
+
+services:
+  tsdproxy:
+    image: almeidapaulopt/tsdproxy:latest
+    container_name: tsdproxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - tsdproxydata:/data
+    environment:
+      # Get AuthKey from your Tailscale account
+      - TSDPROXY_AUTHKEY=${TSDPROXY_AUTHKEY}
+      # Address of docker server (access to example.com ports)
+      - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    restart: unless-stopped
+
+  timemachine:
+    image: msjpq/time-machine
+    container_name: time-machine
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "timemachine"
+    ports:
+      - 8080:8080
+    environment:
+      - SMB_NAME=${SMB_NAME}
+      - SMB_USER=${SMB_USER}
+      - SMB_PASSWORD=${SMB_PASSWORD}
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - timemachine-data:/share
+
+volumes:
+  tsdproxydata:
+  timemachine-data:
