@@ -22,7 +22,10 @@ services:
       tsdproxy.enable: "true"
       tsdproxy.name: "timemachine"
     ports:
-      - 8080:8080
+      - "137:137/udp"
+      - "138:138/udp"
+      - "139:139"
+      - "445:445"
     environment:
       - SMB_NAME=${SMB_NAME}
       - SMB_USER=${SMB_USER}
