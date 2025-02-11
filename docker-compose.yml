@@ -38,14 +38,15 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
+      - TM_USERNAME=backup
       - TM_GROUPNAME=timemachine
       - TM_UID=1000
       - TM_GID=1000
-      - TM_USERNAME=${SMB_NAME}
-      - PASSWORD=${SMB_PASSWORD}
-      - VOLUME_SIZE_LIMIT=930G
+      - PASSWORD=yourpassword
+      - VOLUME_SIZE_LIMIT=930G  # Adjust the limit as needed
       - SMB_PORT=445
-      - SHARE_NAME=RPiTimeMachine
+      - SHARE_NAME=TimeMachine
+      - ADVERTISED_HOSTNAME=raspberrypi-timemachine
     volumes:
       - /mnt/timemachine:/opt/timemachine
     privileged: true
