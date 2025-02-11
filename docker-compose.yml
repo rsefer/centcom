@@ -35,27 +35,25 @@ services:
   timemachine:
     image: mbentley/timemachine:latest
     container_name: timemachine
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "timemachine"
     restart: unless-stopped
     network_mode: host
     environment:
-      - TM_USERNAME=backupuser
+      - TM_USERNAME=backup
       - TM_GROUPNAME=timemachine
-      - TM_PASSWORD=your_secure_password
+      - TM_UID=1000
+      - TM_GID=1000
+      - PASSWORD=yourpassword
+      - VOLUME_SIZE_LIMIT=930G  # Adjust the limit as needed
+      - SMB_PORT=445
       - SHARE_NAME=TimeMachine
-      - TM_SIZE_LIMIT=500G
-      - EXTERNAL_CONF=false
-      - SMB_INHERIT_PERMISSIONS=true
+      - ADVERTISED_HOSTNAME=raspberrypi-timemachine
     volumes:
       - /mnt/timemachine:/opt/timemachine
-    cap_add:
-      - NET_ADMIN
     privileged: true
 
 volumes:
   tsdproxydata:
+  timemachine_data:
 
 networks:
   default:
