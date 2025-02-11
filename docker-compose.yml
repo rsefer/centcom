@@ -35,6 +35,9 @@ services:
   timemachine:
     image: mbentley/timemachine:latest
     container_name: timemachine
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "timemachine"
     restart: unless-stopped
     network_mode: host
     environment:
