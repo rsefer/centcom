@@ -22,15 +22,15 @@ services:
       tsdproxy.name: "caddy"
     hostname: caddy
     restart: unless-stopped
-    env_file: .env
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/caddy_config:/config
-      - ./caddy/caddy_data:/data
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - tailscale_network
 
   timemachine:
     image: mbentley/timemachine:latest
@@ -55,8 +55,9 @@ services:
 volumes:
   tsdproxydata:
   timemachine_data:
+  caddy_data:
+  caddy_config:
 
 networks:
-  default:
-    name: caddy_net
+  tailscale_network:
     external: true

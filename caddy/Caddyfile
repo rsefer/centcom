@@ -2,6 +2,11 @@
 	respond "HTTP Hello, world!"
 }
 
-:443 {
-	respond "SSL Hello, world!"
+ha.vpn.rsefer.com {
+	reverse_proxy https://home-assistant.spaniel-dragon.ts.net {
+		header_up Host {upstream_hostport}
+		transport http {
+			tls
+		}
+	}
 }
