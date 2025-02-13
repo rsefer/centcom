@@ -31,7 +31,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - centcom_default
+      - caddy_net
 
 volumes:
   tsdproxydata:
@@ -39,5 +39,5 @@ volumes:
   caddy_config:
 
 networks:
-  centcom_default:
+  caddy_net:
     external: true
