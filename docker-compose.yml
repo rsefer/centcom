@@ -32,7 +32,6 @@ services:
       - caddy_config:/config
     networks:
       - caddy_net
-    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 
 volumes:
   tsdproxydata:
