@@ -1,12 +1,11 @@
-:80 {
+100.103.2.56:80 {
 	respond "HTTP Hello, world!"
 }
 
+100.103.2.56:443 {
+	respond "HTTPS Hello, world!"
+}
+
 ha.vpn.rsefer.com {
-	reverse_proxy https://home-assistant.spaniel-dragon.ts.net {
-		header_up Host {upstream_hostport}
-		transport http {
-			tls
-		}
-	}
+	reverse_proxy home-assistant.spaniel-dragon.ts.net
 }
