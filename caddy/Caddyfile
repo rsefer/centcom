@@ -1,8 +1,8 @@
-100.83.140.28:80 {
+:80 {
 	respond "HTTP Hello, world!"
 }
 
-100.83.140.28:443 {
+:443 {
 	respond "HTTPS Hello, world!"
 }
 
