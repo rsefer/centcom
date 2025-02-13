@@ -1,0 +1,11 @@
+:80 {
+	respond "Hello, world."
+}
+
+:443 {
+	respond "Hello, SSL world."
+}
+
+ha.vpn.rsefer.com {
+	reverse_proxy https://home-assistant.spaniel-dragon.ts.net
+}
