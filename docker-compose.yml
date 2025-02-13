@@ -27,11 +27,11 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - tailscale_network
+      - centcom_default
 
 volumes:
   tsdproxydata:
@@ -39,5 +39,5 @@ volumes:
   caddy_config:
 
 networks:
-  tailscale_network:
+  centcom_default:
     external: true
