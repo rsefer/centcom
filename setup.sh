@@ -24,5 +24,3 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin 
 
 sudo groupadd docker
 sudo usermod -a -G docker $USER
-
-docker network create "tailscale_network"
