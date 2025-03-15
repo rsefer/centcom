@@ -33,11 +33,64 @@ services:
     networks:
       - caddy_net
 
+  redis:
+    image: docker.io/valkey/valkey:8-alpine
+    container_name: redis
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    networks:
+      - searxng
+    volumes:
+      - valkey-data:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: searxng
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "search"
+    restart: unless-stopped
+    networks:
+      - searxng
+    ports:
+      - "8181:8080"
+    volumes:
+      - searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://search.spaniel-dragon.ts.net
+      - UWSGI_WORKERS=4
+      - UWSGI_THREADS=4
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+
 volumes:
   tsdproxydata:
   caddy_data:
   caddy_config:
+  valkey-data:
+  searxng:
 
 networks:
   caddy_net:
     external: true
+  searxng:
