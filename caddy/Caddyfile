@@ -9,3 +9,7 @@
 ha.vpn.rsefer.com {
 	reverse_proxy https://home-assistant.spaniel-dragon.ts.net
 }
+
+search.vpn.rsefer.com {
+	reverse_proxy https://search.spaniel-dragon.ts.net
+}
