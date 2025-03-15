@@ -11,5 +11,5 @@ ha.vpn.rsefer.com {
 }
 
 search.vpn.rsefer.com {
-	reverse_proxy https://search.spaniel-dragon.ts.net
+	reverse_proxy http://search.spaniel-dragon.ts.net
 }
