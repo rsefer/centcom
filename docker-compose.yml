@@ -68,7 +68,7 @@ services:
     volumes:
       - searxng:/etc/searxng:rw
     environment:
-      - SEARXNG_BASE_URL=https://search.vpn.rsefer.com
+      - SEARXNG_BASE_URL=https://search.spaniel-dragon.ts.net
       - UWSGI_WORKERS=4
       - UWSGI_THREADS=4
     cap_drop:
