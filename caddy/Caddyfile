@@ -7,7 +7,7 @@
 }
 
 rss.vpn.rsefer.com {
-	reverse_proxy localhost:8080
+	reverse_proxy http://centcom.local:8080
 }
 
 ha.vpn.rsefer.com {
