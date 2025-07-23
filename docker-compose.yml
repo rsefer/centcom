@@ -17,6 +17,9 @@ services:
   rss:
     image: freshrss/freshrss:latest
     container_name: rss
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "rss"
     environment:
       TZ: America/Chicago
       CRON_MIN: '*/5'
