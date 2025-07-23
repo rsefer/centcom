@@ -14,6 +14,19 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     restart: unless-stopped
 
+  rss:
+    image: freshrss/freshrss:latest
+    container_name: rss
+    environment:
+      TZ: America/Chicago
+      CRON_MIN: '*/5'
+    ports:
+      - 8080:80
+    volumes:
+      - ./data:/var/www/FreshRSS/data
+      - ./extensions:/var/www/FreshRSS/extensions
+    restart: unless-stopped
+
   caddy:
     image: caddy
     container_name: caddy
