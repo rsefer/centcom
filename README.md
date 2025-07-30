@@ -20,5 +20,5 @@ TSDProxy allows easy connection of each service to Tailscale.
 ## To update:
 ```sh
 docker compose pull
-docker compose down && docker compose up -d
+docker compose stop && docker compose up -d
 ```
