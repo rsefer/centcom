@@ -17,8 +17,14 @@ TSDProxy allows easy connection of each service to Tailscale.
 	- `TSDPROXY_HOSTNAME` can be obtained by running `tailscale ip -4`
 8. Run `docker compose up -d`
 
-## To update:
 ```sh
-docker compose pull
-docker compose stop && docker compose up -d
+# update all builds
+./reload
+
+# restart caddy when making caddyfile changes
+docker compose restart caddy
 ```
+
+# Tailscale config
+- Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
+- A records on the live dns zone (ie. [service].vpn.rsefer.com) should point to the `centcom` Tailscale IP
