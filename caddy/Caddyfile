@@ -1,15 +1,21 @@
 :80 {
-	respond "Hello, world."
-}
-
-:443 {
-	respond "Hello, SSL world."
+  respond "Hello, world from the main Caddyfile"
 }
 
 rss.vpn.rsefer.com {
-	reverse_proxy https://rss.spaniel-dragon.ts.net
+  tls rsefer@gmail.com
+  reverse_proxy rss.spaniel-dragon.ts.net:443 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
 }
 
 ha.vpn.rsefer.com {
-	reverse_proxy https://home-assistant.spaniel-dragon.ts.net
+  tls rsefer@gmail.com
+  reverse_proxy home-assistant.spaniel-dragon.ts.net:433 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
 }
