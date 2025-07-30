@@ -7,7 +7,7 @@
 }
 
 rss.vpn.rsefer.com {
-	reverse_proxy http://centcom.local:8080
+	reverse_proxy https://rss.spaniel-dragon.ts.net
 }
 
 ha.vpn.rsefer.com {
