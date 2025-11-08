@@ -19,3 +19,12 @@ ha.vpn.rsefer.com {
     }
   }
 }
+
+unifi.vpn.rsefer.com {
+  tls rsefer@gmail.com
+  reverse_proxy unifi.spaniel-dragon.ts.net:8443 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+}

@@ -62,6 +62,57 @@ services:
     volumes:
       - /opt/golink/data:/home/nonroot
 
+  unifi-controller:
+    image: lscr.io/linuxserver/unifi-network-application:latest
+    container_name: unifi-controller
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "unifi"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - MONGO_USER=unifi
+      - MONGO_PASS=unifi
+      - MONGO_HOST=unifi-db
+      - MONGO_PORT=27017
+      - MONGO_DBNAME=unifi
+      - MEM_LIMIT=1024 #optional
+      - MEM_STARTUP=1024 #optional
+    volumes:
+      - ./unifi/config:/config
+    ports:
+      - 8443:8443
+      - 3478:3478/udp
+      - 10001:10001/udp
+      - 8080:8080
+      - 1900:1900/udp #optional
+      - 8843:8843 #optional
+      - 8880:8880 #optional
+      - 6789:6789 #optional
+      - 5514:5514/udp #optional
+    restart: unless-stopped
+    depends_on:
+      - unifi-db
+    networks:
+      - caddy_net
+
+  unifi-db:
+    image: docker.io/mongo:7.0
+    container_name: unifi-db
+    volumes:
+      - ./unifi/db:/data/db
+      - ./unifi/db/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - 27017:27017
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+      - MONGO_INITDB_DATABASE=unifi
+    networks:
+      - caddy_net
+
 volumes:
   tsdproxydata:
   caddy_data:
