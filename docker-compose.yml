@@ -28,6 +28,8 @@ services:
     volumes:
       - ./data:/var/www/FreshRSS/data
       - ./extensions:/var/www/FreshRSS/extensions
+    networks:
+      - caddy_net
     restart: unless-stopped
 
   caddy:
