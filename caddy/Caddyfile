@@ -4,7 +4,7 @@
 
 rss.vpn.rsefer.com {
   tls internal
-  reverse_proxy rss.spaniel-dragon.ts.net:80 {
+  reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
     }
