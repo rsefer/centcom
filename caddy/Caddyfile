@@ -15,6 +15,7 @@
 }
 
 admin.vpn.rsefer.com {
+	tls internal
 	root * /www/admin
 	file_server
 }
