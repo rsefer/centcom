@@ -14,7 +14,7 @@
   respond "Hello, world from the main Caddyfile"
 }
 
-vpn.rsefer.com {
+admin.vpn.rsefer.com {
 	tls internal
   reverse_proxy https://admin.spaniel-dragon.ts.net:443 {
     transport http {
