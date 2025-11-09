@@ -16,7 +16,7 @@
 
 vpn.rsefer.com {
 	tls internal
-  reverse_proxy http://admin.spaniel-dragon.ts.net:80 {
+  reverse_proxy https://admin.spaniel-dragon.ts.net:433 {
     transport http {
       tls_insecure_skip_verify
     }
