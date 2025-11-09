@@ -3,7 +3,7 @@
 }
 
 rss.vpn.rsefer.com {
-  tls rsefer@gmail.com
+  tls internal
   reverse_proxy rss.spaniel-dragon.ts.net:80 {
     transport http {
       tls_insecure_skip_verify
@@ -12,7 +12,7 @@ rss.vpn.rsefer.com {
 }
 
 ha.vpn.rsefer.com {
-  tls rsefer@gmail.com
+  tls internal
   reverse_proxy home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
