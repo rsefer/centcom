@@ -27,7 +27,7 @@
 }
 
 rss.vpn.rsefer.com {
-	tls internal
+  tls rsefer@gmail.com
   reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
@@ -36,7 +36,7 @@ rss.vpn.rsefer.com {
 }
 
 ha.vpn.rsefer.com {
-  tls internal
+  tls rsefer@gmail.com
   reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
@@ -45,7 +45,7 @@ ha.vpn.rsefer.com {
 }
 
 go.vpn.rsefer.com {
-  tls internal
+  tls rsefer@gmail.com
   reverse_proxy https://go.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
