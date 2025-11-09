@@ -15,9 +15,8 @@
 }
 
 admin.vpn.rsefer.com {
-	reverse_proxy localhost:80 {
-		lb_policy first
-	}
+	root * /www/admin
+	file_server
 }
 
 rss.vpn.rsefer.com {
