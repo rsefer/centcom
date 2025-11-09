@@ -14,6 +14,13 @@
   respond "Hello, world from the main Caddyfile"
 }
 
+vpn.rsefer.com {
+	tls internal
+	root * /www/vpn
+	file_server
+	try_files {path} {path}/ /index.html
+}
+
 rss.vpn.rsefer.com {
 	tls internal
   reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
