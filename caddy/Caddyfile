@@ -15,11 +15,8 @@
 }
 
 admin.vpn.rsefer.com {
-	tls internal
-	reverse_proxy https://centcom.spaniel-dragon.ts.net:443 {
-		transport http {
-			tls_insecure_skip_verify
-		}
+	reverse_proxy localhost:80 {
+		lb_policy first
 	}
 }
 
