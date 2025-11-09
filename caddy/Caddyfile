@@ -13,7 +13,7 @@ rss.vpn.rsefer.com {
 
 ha.vpn.rsefer.com {
   tls internal
-  reverse_proxy home-assistant.spaniel-dragon.ts.net:443 {
+  reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_insecure_skip_verify
     }
