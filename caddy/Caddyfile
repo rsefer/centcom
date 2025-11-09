@@ -1,26 +1,26 @@
-// example with real A record
-// A record should point to the IP address of the root server
-// In this case, the root server is centcom, not the caddy container
-//
-// sub.domain.com {
-//   tls rsefer@gmail.com
-//   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
-//     transport http {
-//       tls_insecure_skip_verify
-//     }
-//   }
-// }
-//
-// example for spoofed DNS entries (ie. no actual A record)
-//
-// sub.domain.com {
-//   tls internal
-//   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
-//     transport http {
-//       tls_insecure_skip_verify
-//     }
-//   }
-// }
+# example with real A record
+# A record should point to the IP address of the root server
+# In this case, the root server is centcom, not the caddy container
+#
+# sub.domain.com {
+#   tls rsefer@gmail.com
+#   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
+#     transport http {
+#       tls_insecure_skip_verify
+#     }
+#   }
+# }
+#
+# example for spoofed DNS entries (ie. no actual A record)
+#
+# sub.domain.com {
+#   tls internal
+#   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
+#     transport http {
+#       tls_insecure_skip_verify
+#     }
+#   }
+# }
 
 :80 {
   respond "Hello, world from the main Caddyfile"
