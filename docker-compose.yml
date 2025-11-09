@@ -14,20 +14,6 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     restart: unless-stopped
 
-  admin:
-    image: nginx:latest
-    container_name: admin
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "admin"
-    ports:
-      - 8081:80
-    volumes:
-      - ./www/admin:/usr/share/nginx/html:ro
-    networks:
-      - caddy_net
-    restart: unless-stopped
-
   rss:
     image: freshrss/freshrss:latest
     container_name: rss
