@@ -1,11 +1,12 @@
-# Example for spoofed DNS entries
+# Example for an entry that has a *public A record* DNS entry
+# The a record should point to the parent IP (in this case, centcom)
 # Use the internal CA to issue a certificate
 #
 # sub.domain.com {
 #   tls internal
 #   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
 #     transport http {
-#       tls_insecure_skip_verify
+#       tls_server_name subdomain.spaniel-dragon.ts.net
 #     }
 #   }
 # }
