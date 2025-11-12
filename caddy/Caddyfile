@@ -3,7 +3,6 @@
 # Use the internal CA to issue a certificate
 #
 # sub.domain.com {
-#   tls internal
 #   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
 #     transport http {
 #       tls_server_name subdomain.spaniel-dragon.ts.net
@@ -12,13 +11,11 @@
 # }
 
 :80, :443, vpn.rsefer.com {
-  tls internal
   root * /www
   file_server
 }
 
 rss.vpn.rsefer.com {
-	tls internal
   reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name rss.spaniel-dragon.ts.net
@@ -27,7 +24,6 @@ rss.vpn.rsefer.com {
 }
 
 ha.vpn.rsefer.com {
-  tls internal
   reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name home-assistant.spaniel-dragon.ts.net
@@ -36,7 +32,6 @@ ha.vpn.rsefer.com {
 }
 
 go.vpn.rsefer.com {
-  tls internal
   reverse_proxy https://go.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name go.spaniel-dragon.ts.net
