@@ -16,6 +16,7 @@
 }
 
 :443 {
+	tls internal
   respond "Caddyfile HTTPS"
 }
 
