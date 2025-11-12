@@ -11,13 +11,10 @@
 #   }
 # }
 
-:80 {
-  respond "Caddyfile HTTP"
-}
-
-:443 {
-	tls internal
-  respond "Caddyfile HTTPS"
+:80, :443 {
+  tls internal
+  root * /www
+  file_server
 }
 
 rss.vpn.rsefer.com {
