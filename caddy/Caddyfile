@@ -12,7 +12,11 @@
 # }
 
 :80 {
-  respond "Hello, world from the main Caddyfile"
+  respond "Caddyfile HTTP"
+}
+
+:443 {
+  respond "Caddyfile HTTPS"
 }
 
 rss.vpn.rsefer.com {
