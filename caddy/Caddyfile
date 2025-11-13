@@ -18,7 +18,7 @@
 }
 
 vpn.rsefer.com {
-	response "VPN"
+	respond "VPN"
 }
 
 rss.vpn.rsefer.com {
