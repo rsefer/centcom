@@ -11,7 +11,7 @@
 #   }
 # }
 
-:80, :443, vpn.rsefer.com, ts.rsefer.com {
+:80, :443, vpn.rsefer.com {
   tls internal
   root * /www
   file_server
@@ -26,7 +26,7 @@ rss.vpn.rsefer.com {
   }
 }
 
-ha.vpn.rsefer.com {
+ha.vpn.rsefer.com, ha.ts.rsefer.com {
   tls internal
   reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
