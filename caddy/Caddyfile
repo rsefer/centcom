@@ -11,7 +11,7 @@
 #   }
 # }
 
-:80, :443, vpn.rsefer.com {
+:80, :443, vpn.rsefer.com, ts.rsefer.com {
   tls internal
   root * /www
   file_server
