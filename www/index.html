@@ -37,6 +37,9 @@
 			display: grid;
 			gap: 1rem;
 			grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+			@media (max-width: 699px) {
+				grid-template-columns: 1fr;
+			}
 			align-items: stretch;
 		}
 		.service {
