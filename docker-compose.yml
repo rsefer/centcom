@@ -2,6 +2,19 @@
 
 services:
 
+  tsidp:
+    image: ghcr.io/tailscale/tsidp:main
+    container_name: tsidp
+    volumes:
+      - tsidp-data:/data
+    environment:
+      - TAILSCALE_USE_WIP_CODE=1
+      - TS_STATE_DIR=/data
+      - TS_HOSTNAME=idp
+      - TSIDP_ENABLE_STS=1
+      - TS_AUTHKEY=${TSIDP_TS_AUTHKEY}
+    restart: unless-stopped
+
   tsdproxy:
     image: almeidapaulopt/tsdproxy:latest
     container_name: tsdproxy
@@ -75,6 +88,7 @@ services:
       - caddy_net
 
 volumes:
+  tsidp-data:
   tsdproxydata:
   caddy_data:
   caddy_config:
