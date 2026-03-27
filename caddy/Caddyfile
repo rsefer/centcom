@@ -46,3 +46,11 @@ go.vpn.rsefer.com {
     }
   }
 }
+
+ai.vpn.rsefer.com {
+  reverse_proxy https://ai.spaniel-dragon.ts.net:443 {
+    transport http {
+      tls_server_name ai.spaniel-dragon.ts.net
+    }
+  }
+}
