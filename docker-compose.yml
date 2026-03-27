@@ -33,7 +33,10 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy-dns/route53:latest
+    image: centcom/caddy-route53:local
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
     container_name: caddy
     labels:
       tsdproxy.enable: "true"
