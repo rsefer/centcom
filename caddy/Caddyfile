@@ -23,18 +23,10 @@ vpn.rsefer.com {
 	respond "VPN"
 }
 
-rss.vpn.rsefer.com {
-  reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
+ai.vpn.rsefer.com {
+  reverse_proxy https://ai.spaniel-dragon.ts.net:443 {
     transport http {
-      tls_server_name rss.spaniel-dragon.ts.net
-    }
-  }
-}
-
-ha.vpn.rsefer.com {
-  reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name home-assistant.spaniel-dragon.ts.net
+      tls_server_name ai.spaniel-dragon.ts.net
     }
   }
 }
@@ -47,10 +39,18 @@ go.vpn.rsefer.com {
   }
 }
 
-ai.vpn.rsefer.com {
-  reverse_proxy https://ai.spaniel-dragon.ts.net:443 {
+ha.vpn.rsefer.com {
+  reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
-      tls_server_name ai.spaniel-dragon.ts.net
+      tls_server_name home-assistant.spaniel-dragon.ts.net
+    }
+  }
+}
+
+rss.vpn.rsefer.com {
+  reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
+    transport http {
+      tls_server_name rss.spaniel-dragon.ts.net
     }
   }
 }
