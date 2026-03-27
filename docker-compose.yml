@@ -36,8 +36,14 @@ services:
       tsdproxy.enable: "true"
       tsdproxy.name: "rss"
     environment:
-      TZ: America/Chicago
-      CRON_MIN: '*/5'
+      - TZ=America/Chicago
+      - CRON_MIN='*/5'
+      - OIDC_ENABLED='true'
+      - OIDC_PROVIDER_METADATA_URL=https://idp.spaniel-dragon.ts.net/.well-known/openid-configuration
+      - OIDC_CLIENT_ID=${FRESHRSS_OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${FRESHRSS_OIDC_CLIENT_SECRET}
+      - OIDC_REMOTE_USER_CLAIM=${FRESHRSS_OIDC_REMOTE_USER_CLAIM}
+      - OIDC_X_FORWARDED_HEADERS=X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
     ports:
       - 8080:80
     volumes:
