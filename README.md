@@ -62,5 +62,6 @@ docker compose restart caddy
 	]
 }
 ```
-- Redeploy with `docker compose pull && docker compose up -d`.
+- Redeploy with `docker compose pull --ignore-buildable && docker compose build caddy && docker compose up -d`.
 - Check issuance with `docker compose logs -f caddy` and look for successful certificate obtain events.
+- If issuance fails after an interrupted attempt, delete any stale `_acme-challenge.*` TXT records in Route53 for `vpn.domain.com`, and any `*rss.vpn.comain.com`, then restart Caddy.
