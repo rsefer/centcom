@@ -43,6 +43,14 @@ ha.vpn.rsefer.com {
   }
 }
 
+idp.vpn.rsefer.com {
+  reverse_proxy https://idp.spaniel-dragon.ts.net:443 {
+    transport http {
+      tls_server_name idp.spaniel-dragon.ts.net
+    }
+  }
+}
+
 rss.vpn.rsefer.com {
   reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
     transport http {
