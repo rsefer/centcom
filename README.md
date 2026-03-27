@@ -45,6 +45,7 @@ docker compose restart caddy
 			"Effect": "Allow",
 			"Action": [
 				"route53:ListHostedZones",
+				"route53:ListHostedZonesByName",
 				"route53:ListResourceRecordSets",
 				"route53:GetChange"
 			],

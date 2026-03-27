@@ -31,7 +31,7 @@ rss.vpn.rsefer.com {
   }
 }
 
-ha.vpn.rsefer.com, ha.ts.rsefer.com {
+ha.vpn.rsefer.com {
   reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name home-assistant.spaniel-dragon.ts.net
