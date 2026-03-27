@@ -14,13 +14,9 @@
 #   }
 # }
 
-http:// {
+vpn.rsefer.com, http:// {
   root * /usr/share/caddy
   file_server
-}
-
-vpn.rsefer.com {
-	respond "VPN"
 }
 
 ai.vpn.rsefer.com {
