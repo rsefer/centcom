@@ -28,4 +28,37 @@ docker compose restart caddy
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - A records on the live dns zone (ie. [service].vpn.rsefer.com) should point to the `centcom` Tailscale IP
-- `*.vpn.rsefer.com` in this setup use Caddy `tls internal` (private CA). Browsers/devices must trust the Caddy local CA cert from the `caddy_data` volume (`pki/authorities/local/root.crt`) or they will show TLS warnings/failures.
+
+# Public trusted TLS (DNS challenge)
+- This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
+- Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`.
+- The IAM principal should have Route53 permissions to list zones and change DNS records for your hosted zone.
+- Example IAM policy (replace `YOUR_HOSTED_ZONE_ID`):
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Route53ReadForDnsChallenge",
+			"Effect": "Allow",
+			"Action": [
+				"route53:ListHostedZones",
+				"route53:ListResourceRecordSets",
+				"route53:GetChange"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "Route53WriteChallengeRecords",
+			"Effect": "Allow",
+			"Action": [
+				"route53:ChangeResourceRecordSets"
+			],
+			"Resource": "arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"
+		}
+	]
+}
+```
+- Redeploy with `docker compose pull && docker compose up -d`.
+- Check issuance with `docker compose logs -f caddy` and look for successful certificate obtain events.

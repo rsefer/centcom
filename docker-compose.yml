@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy
+    image: caddy-dns/route53:latest
     container_name: caddy
     labels:
       tsdproxy.enable: "true"
@@ -49,6 +49,10 @@ services:
       - ./www:/usr/share/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
     networks:
       - caddy_net
 

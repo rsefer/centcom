@@ -1,9 +1,12 @@
+{
+  acme_dns route53
+}
+
 # Example for an entry that has a *public A record* DNS entry
 # The a record should point to the parent IP (in this case, centcom)
-# Use the internal CA to issue a certificate
+# Use DNS challenge so cert issuance works even when hostnames resolve only to a Tailscale IP
 #
 # sub.domain.com {
-#   tls internal
 #   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
 #     transport http {
 #       tls_server_name subdomain.spaniel-dragon.ts.net
@@ -17,12 +20,10 @@ http:// {
 }
 
 vpn.rsefer.com {
-	tls internal
 	respond "VPN"
 }
 
 rss.vpn.rsefer.com {
-	tls internal
   reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name rss.spaniel-dragon.ts.net
@@ -31,7 +32,6 @@ rss.vpn.rsefer.com {
 }
 
 ha.vpn.rsefer.com, ha.ts.rsefer.com {
-  tls internal
   reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name home-assistant.spaniel-dragon.ts.net
@@ -40,7 +40,6 @@ ha.vpn.rsefer.com, ha.ts.rsefer.com {
 }
 
 go.vpn.rsefer.com {
-  tls internal
   reverse_proxy https://go.spaniel-dragon.ts.net:443 {
     transport http {
       tls_server_name go.spaniel-dragon.ts.net
