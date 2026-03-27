@@ -11,13 +11,13 @@
 #   }
 # }
 
-:80 {
-  tls internal
-  root * /www
+http:// {
+  root * /usr/share/caddy
   file_server
 }
 
 vpn.rsefer.com {
+	tls internal
 	respond "VPN"
 }
 

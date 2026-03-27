@@ -28,3 +28,4 @@ docker compose restart caddy
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - A records on the live dns zone (ie. [service].vpn.rsefer.com) should point to the `centcom` Tailscale IP
+- `*.vpn.rsefer.com` in this setup use Caddy `tls internal` (private CA). Browsers/devices must trust the Caddy local CA cert from the `caddy_data` volume (`pki/authorities/local/root.crt`) or they will show TLS warnings/failures.
