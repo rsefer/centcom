@@ -37,7 +37,7 @@ services:
       tsdproxy.name: "rss"
     environment:
       - TZ=America/Chicago
-      - CRON_MIN='*/5'
+      - CRON_MIN=*/5
     ports:
       - 8080:80
     volumes:
