@@ -43,8 +43,6 @@ services:
     volumes:
       - ./data:/var/www/FreshRSS/data
       - ./extensions:/var/www/FreshRSS/extensions
-      - ./freshrss/well-known:/var/www/FreshRSS/p/.well-known
-      - ./freshrss/well-known.conf:/etc/apache2/conf-enabled/well-known.conf:ro
     networks:
       - caddy_net
     restart: unless-stopped
