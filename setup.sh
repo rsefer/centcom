@@ -28,6 +28,8 @@ sudo apt-get update
 
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+sudo systemctl enable --now containerd.service docker.service
+
 sudo groupadd docker
 sudo usermod -a -G docker $USER
 
