@@ -17,31 +17,31 @@
 #
 # sub = the Tailscale name of the machine
 #
-# sub.domain.com {
+# sub.{$DOMAIN} {
 #   import ts_upstream sub
 # }
 
-vpn.rsefer.com, http:// {
+{$DOMAIN}, http:// {
   root * /usr/share/caddy
   file_server
 }
 
-ai.vpn.rsefer.com {
+ai.{$DOMAIN} {
   import ts_upstream ai
 }
 
-go.vpn.rsefer.com {
+go.{$DOMAIN} {
   import ts_upstream go
 }
 
-ha.vpn.rsefer.com {
+ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }
 
-idp.vpn.rsefer.com {
+idp.{$DOMAIN} {
   import ts_upstream idp
 }
 
-rss.vpn.rsefer.com {
+rss.{$DOMAIN} {
   import ts_upstream rss
 }
