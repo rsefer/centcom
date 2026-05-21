@@ -6,6 +6,7 @@ class ServiceCard extends HTMLElement {
 
 		const href = this.getAttribute('href') || '#';
 		const icon = this.getAttribute('icon') || '';
+		const iconImage = this.getAttribute('iconImage') || '';
 		const title = this.getAttribute('title') || 'Service';
 
 		this.attachShadow({ mode: 'open' });
@@ -31,9 +32,14 @@ class ServiceCard extends HTMLElement {
 				.service__icon {
 					font-size: 1.5em;
 				}
+				.service__icon img {
+					display: block;
+					width: 1em;
+					height: 1em;
+				}
 			</style>
 			<a href="${href}">
-				<h3 class="service__title"><span class="service__icon">${icon}</span><span class="service__title-label">${title}</span></h3>
+				<h3 class="service__title"><span class="service__icon">${iconImage ? `<img src="${iconImage}" alt="${title} icon">` : icon}</span><span class="service__title-label">${title}</span></h3>
 			</a>
 		`;
 	}
