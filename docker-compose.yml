@@ -15,12 +15,6 @@ services:
       - TS_AUTHKEY=${TSIDP_TS_AUTHKEY}
     networks:
       - caddy_net
-    healthcheck:
-      test: ["CMD-SHELL", "test -d /data"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
     restart: unless-stopped
 
   tsdproxy:
@@ -33,12 +27,6 @@ services:
       - TSDPROXY_AUTHKEY=${TSDPROXY_AUTHKEY}
       - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
       - DOCKER_HOST=unix:///var/run/docker.sock
-    healthcheck:
-      test: ["CMD-SHELL", "test -S /var/run/docker.sock"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
 
   rss:
@@ -51,18 +39,12 @@ services:
       - TZ=America/Chicago
       - CRON_MIN=*/5
     ports:
-      - 127.0.0.1:8080:80
+      - 8080:80
     volumes:
       - ./data:/var/www/FreshRSS/data
       - ./extensions:/var/www/FreshRSS/extensions
     networks:
       - caddy_net
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
     restart: unless-stopped
 
   caddy:
@@ -92,12 +74,6 @@ services:
       - AWS_REGION=${AWS_REGION}
     networks:
       - caddy_net
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
 
   golink:
     image: ghcr.io/tailscale/golink:main
