@@ -2,16 +2,23 @@
   acme_dns route53
 }
 
+# Reusable snippet for Tailscale HTTPS upstreams.
+(ts_upstream) {
+  reverse_proxy https://{args.0}.spaniel-dragon.ts.net {
+    transport http {
+      tls_server_name {args.0}.spaniel-dragon.ts.net
+    }
+  }
+}
+
 # Example for an entry that has a *public A record* DNS entry
 # The a record should point to the parent IP (in this case, centcom)
 # Use DNS challenge so cert issuance works even when hostnames resolve only to a Tailscale IP
 #
+# sub = the Tailscale name of the machine
+#
 # sub.domain.com {
-#   reverse_proxy https://subdomain.spaniel-dragon.ts.net:443 {
-#     transport http {
-#       tls_server_name subdomain.spaniel-dragon.ts.net
-#     }
-#   }
+#   import ts_upstream sub
 # }
 
 vpn.rsefer.com, http:// {
@@ -20,41 +27,21 @@ vpn.rsefer.com, http:// {
 }
 
 ai.vpn.rsefer.com {
-  reverse_proxy https://ai.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name ai.spaniel-dragon.ts.net
-    }
-  }
+  import ts_upstream ai
 }
 
 go.vpn.rsefer.com {
-  reverse_proxy https://go.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name go.spaniel-dragon.ts.net
-    }
-  }
+  import ts_upstream go
 }
 
 ha.vpn.rsefer.com {
-  reverse_proxy https://home-assistant.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name home-assistant.spaniel-dragon.ts.net
-    }
-  }
+  import ts_upstream home-assistant
 }
 
 idp.vpn.rsefer.com {
-  reverse_proxy https://idp.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name idp.spaniel-dragon.ts.net
-    }
-  }
+  import ts_upstream idp
 }
 
 rss.vpn.rsefer.com {
-  reverse_proxy https://rss.spaniel-dragon.ts.net:443 {
-    transport http {
-      tls_server_name rss.spaniel-dragon.ts.net
-    }
-  }
+  import ts_upstream rss
 }
