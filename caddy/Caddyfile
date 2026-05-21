@@ -2,6 +2,12 @@
   acme_dns route53
 }
 
+# Dashboard static server
+{$DOMAIN}, http:// {
+  root * /usr/share/caddy
+  file_server
+}
+
 # Reusable snippet for Tailscale HTTPS upstreams.
 (ts_upstream) {
   reverse_proxy https://{args.0}.spaniel-dragon.ts.net {
@@ -21,27 +27,19 @@
 #   import ts_upstream sub
 # }
 
-{$DOMAIN}, http:// {
-  root * /usr/share/caddy
-  file_server
-}
-
+# Subdomains
 ai.{$DOMAIN} {
   import ts_upstream ai
 }
-
 go.{$DOMAIN} {
   import ts_upstream go
 }
-
 ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }
-
 idp.{$DOMAIN} {
   import ts_upstream idp
 }
-
 rss.{$DOMAIN} {
   import ts_upstream rss
 }
