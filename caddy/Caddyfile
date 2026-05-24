@@ -10,9 +10,9 @@
 
 # Reusable snippet for Tailscale HTTPS upstreams.
 (ts_upstream) {
-  reverse_proxy https://{args.0}.spaniel-dragon.ts.net {
+  reverse_proxy https://{args[0]}.spaniel-dragon.ts.net {
     transport http {
-      tls_server_name {args.0}.spaniel-dragon.ts.net
+      tls_server_name {args[0]}.spaniel-dragon.ts.net
     }
   }
 }
