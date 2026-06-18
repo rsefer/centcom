@@ -58,6 +58,12 @@ services:
       tsdproxy.name: "caddy"
     hostname: caddy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "80:80"
       - "443:443"
