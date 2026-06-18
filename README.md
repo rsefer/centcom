@@ -23,7 +23,15 @@ TSDProxy allows easy connection of each service to Tailscale.
 
 # restart caddy when making caddyfile changes
 docker compose restart caddy
+
+# force boot recovery routine manually
+./boot-recover.sh
 ```
+
+## Power outage recovery
+- `setup.sh` installs an `@reboot` cron job that runs `boot-recover.sh`.
+- On boot, that script waits for Docker, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
+- Recovery logs are written to `~/centcom/boot-recover.log`.
 
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
