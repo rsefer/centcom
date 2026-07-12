@@ -2,18 +2,6 @@
 
 services:
 
-  docktail:
-    image: ghcr.io/marvinvr/docktail:latest
-    container_name: docktail-automated
-    environment:
-      - TAILSCALE_OAUTH_CLIENT_ID=${TAILSCALE_OAUTH_CLIENT_ID}
-      - TAILSCALE_OAUTH_CLIENT_SECRET=${TAILSCALE_OAUTH_CLIENT_SECRET}
-      - DEFAULT_SERVICE_TAGS=tag:docktail-service
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/run/tailscale:/var/run/tailscale
-    restart: unless-stopped
-
   tsidp:
     image: ghcr.io/tailscale/tsidp:latest
     container_name: tsidp
@@ -22,11 +10,9 @@ services:
     environment:
       - TAILSCALE_USE_WIP_CODE=1 # tsidp is experimental - needed while version <1.0.0
       - TS_STATE_DIR=/data # store persistent tsnet and tsidp state
+      - TS_HOSTNAME=idp # Hostname on tailnet (becomes idp.your-tailnet.ts.net)
       - TSIDP_ENABLE_STS=1 # Enable OAuth token exchange
-      - docktail.service.enable=true
-      - docktail.service.name=idp
-      - docktail.service.port=80
-      - docktail.service.service-port=443
+      - TS_AUTHKEY=${TSIDP_TS_AUTHKEY}
     networks:
       - caddy_net
     restart: unless-stopped
