@@ -100,12 +100,12 @@ services:
     image: ghcr.io/tailscale/golink:main
     container_name: golink
     labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "go"
+      - docktail.service.enable=true
+      - docktail.service.name=go
+      - docktail.service.port=80
+      - docktail.service.service-port=443
     restart: unless-stopped
     user: root
-    environment:
-      - TS_AUTHKEY=${TSDPROXY_AUTHKEY}
     volumes:
       - /opt/golink/data:/home/nonroot
     networks:
