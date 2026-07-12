@@ -37,6 +37,27 @@ docker compose restart caddy
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - A records on the live dns zone (ie. [service].vpn.rsefer.com) should point to the `centcom` Tailscale IP
 
+# Tailscale ACLs
+- `tagOwners` only makes a tag valid. Services also need an `autoApprovers.services` rule so Tailscale will actually accept the service advertisement.
+- This setup allows the `centcom` host tagged `tag:docktail-host` to advertise DockTail services tagged `tag:docktail-service`.
+
+```json
+{
+	"tagOwners": {
+		"tag:personal-device":  ["autogroup:admin"],
+		"tag:at-home":          ["autogroup:admin"],
+		"tag:server":           ["autogroup:admin"],
+		"tag:docktail-host":    ["autogroup:admin"],
+		"tag:docktail-service": ["tag:docktail-host"]
+	},
+	"autoApprovers": {
+		"services": {
+			"tag:docktail-service": ["tag:docktail-host"]
+		}
+	}
+}
+```
+
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
 - Caddy is built locally from [caddy/Dockerfile](caddy/Dockerfile) to include the Route53 DNS plugin.

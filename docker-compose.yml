@@ -14,23 +14,6 @@ services:
       - /var/run/tailscale:/var/run/tailscale
     restart: unless-stopped
 
-  tsidp:
-    image: ghcr.io/tailscale/tsidp:latest
-    container_name: tsidp
-    volumes:
-      - tsidp-data:/data
-    environment:
-      - TAILSCALE_USE_WIP_CODE=1 # tsidp is experimental - needed while version <1.0.0
-      - TS_STATE_DIR=/data # store persistent tsnet and tsidp state
-      - TSIDP_ENABLE_STS=1 # Enable OAuth token exchange
-      - docktail.service.enable=true
-      - docktail.service.name=idp
-      - docktail.service.port=80
-      - docktail.service.service-port=443
-    networks:
-      - caddy_net
-    restart: unless-stopped
-
   tsdproxy:
     image: almeidapaulopt/tsdproxy:latest
     container_name: tsdproxy
@@ -41,6 +24,24 @@ services:
       - TSDPROXY_AUTHKEY=${TSDPROXY_AUTHKEY}
       - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
       - DOCKER_HOST=unix:///var/run/docker.sock
+    restart: unless-stopped
+
+  tsidp:
+    image: ghcr.io/tailscale/tsidp:latest
+    container_name: tsidp
+    volumes:
+      - tsidp-data:/data
+    environment:
+      - TAILSCALE_USE_WIP_CODE=1 # tsidp is experimental - needed while version <1.0.0
+      - TS_STATE_DIR=/data # store persistent tsnet and tsidp state
+      - TSIDP_ENABLE_STS=1 # Enable OAuth token exchange
+    labels:
+      - docktail.service.enable=true
+      - docktail.service.name=idp
+      - docktail.service.port=80
+      - docktail.service.service-port=443
+    networks:
+      - caddy_net
     restart: unless-stopped
 
   rss:
