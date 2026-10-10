@@ -81,6 +81,25 @@ services:
     networks:
       - caddy_net
 
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "pihole"
+    environment:
+      - TZ=America/Chicago
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80"
+    volumes:
+      - pihole_data:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
   golink:
     image: ghcr.io/tailscale/golink:main
     container_name: golink
@@ -101,6 +120,8 @@ volumes:
   tsdproxydata:
   caddy_data:
   caddy_config:
+  pihole_data:
+  pihole_dnsmasq:
 
 networks:
   caddy_net:

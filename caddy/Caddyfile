@@ -40,6 +40,9 @@ ha.{$DOMAIN} {
 idp.{$DOMAIN} {
   import ts_upstream idp
 }
+pihole.{$DOMAIN} {
+  reverse_proxy pihole:80
+}
 rss.{$DOMAIN} {
   import ts_upstream rss
 }
