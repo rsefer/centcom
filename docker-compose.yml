@@ -46,6 +46,12 @@ services:
     networks:
       - caddy_net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/') === false ? 1 : 0);"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   caddy:
     image: centcom/caddy-route53:local
@@ -144,6 +150,12 @@ services:
     networks:
       - caddy_net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/beszel", "health", "--url", "http://localhost:8090"]
+      interval: 120s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   beszel-agent:
     image: henrygd/beszel-agent:latest
@@ -159,6 +171,12 @@ services:
       - beszel_socket:/beszel_socket
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/agent", "health"]
+      interval: 120s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   tsidp-data:
