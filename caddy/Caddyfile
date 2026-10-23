@@ -46,3 +46,6 @@ pihole.{$DOMAIN} {
 rss.{$DOMAIN} {
   import ts_upstream rss
 }
+uptime.{$DOMAIN} {
+  import ts_upstream uptime
+}
