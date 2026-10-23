@@ -37,6 +37,9 @@
 ai.{$DOMAIN} {
   import ts_upstream ai
 }
+beszel.{$DOMAIN} {
+  reverse_proxy beszel:8090
+}
 go.{$DOMAIN} {
   import ts_upstream go
 }

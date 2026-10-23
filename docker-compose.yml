@@ -131,6 +131,20 @@ services:
       - caddy_net
     restart: unless-stopped
 
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: beszel
+    environment:
+      - APP_URL=https://beszel.${DOMAIN}
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - beszel_data:/beszel_data
+      - beszel_socket:/beszel_socket
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
 volumes:
   tsidp-data:
   tsdproxydata:
@@ -139,6 +153,8 @@ volumes:
   pihole_data:
   pihole_dnsmasq:
   uptime-kuma-data:
+  beszel_data:
+  beszel_socket:
 
 networks:
   caddy_net:
