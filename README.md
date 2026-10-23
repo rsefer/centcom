@@ -45,7 +45,7 @@ docker compose restart caddy
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
 - Caddy is built locally from [caddy/Dockerfile](caddy/Dockerfile) to include the Route53 DNS plugin.
-- Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`.
+- Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `ROUTE53_HOSTED_ZONE_ID` (the public Route 53 hosted zone ID for `rsefer.com`).
 - The IAM principal should have Route53 permissions to list zones and change DNS records for your hosted zone.
 - Example IAM policy (replace `YOUR_HOSTED_ZONE_ID`):
 
