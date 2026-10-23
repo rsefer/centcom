@@ -2,6 +2,13 @@
 
 set -eu
 
+TAILSCALE_IP="$(tailscale ip -4)"
+if [ -z "$TAILSCALE_IP" ]; then
+	echo "Could not determine the host's Tailscale IPv4 address"
+	exit 1
+fi
+export TAILSCALE_IP
+
 wait_for_service() {
 	service="$1"
 	timeout_seconds="${2:-60}"

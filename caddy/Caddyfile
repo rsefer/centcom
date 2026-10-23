@@ -53,5 +53,5 @@ pihole.{$DOMAIN} {
   reverse_proxy pihole:80
 }
 rss.{$DOMAIN} {
-  import ts_upstream rss
+  reverse_proxy rss:80
 }

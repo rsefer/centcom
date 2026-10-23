@@ -27,6 +27,29 @@ wait_for_docker() {
 
 wait_for_docker 180
 
+wait_for_tailscale() {
+	timeout_seconds="${1:-180}"
+	start_time="$(date +%s)"
+
+	while true; do
+		if tailscale_ip="$(tailscale ip -4 2>/dev/null)" && [ -n "$tailscale_ip" ]; then
+			export TAILSCALE_IP="$tailscale_ip"
+			echo "Tailscale is ready at $TAILSCALE_IP"
+			return 0
+		fi
+
+		now="$(date +%s)"
+		if [ $((now - start_time)) -ge "$timeout_seconds" ]; then
+			echo "Tailscale did not become ready in ${timeout_seconds}s"
+			return 1
+		fi
+
+		sleep 3
+	done
+}
+
+wait_for_tailscale 180
+
 if ! docker network inspect caddy_net >/dev/null 2>&1; then
 	echo "Creating missing network: caddy_net"
 	docker network create caddy_net >/dev/null

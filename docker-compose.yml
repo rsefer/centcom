@@ -17,29 +17,12 @@ services:
       - caddy_net
     restart: unless-stopped
 
-  tsdproxy:
-    image: almeidapaulopt/tsdproxy:latest
-    container_name: tsdproxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - tsdproxydata:/data
-    environment:
-      - TSDPROXY_AUTHKEY=${TSDPROXY_AUTHKEY}
-      - TSDPROXY_HOSTNAME=${TSDPROXY_HOSTNAME}
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    restart: unless-stopped
-
   rss:
     image: freshrss/freshrss:latest
     container_name: rss
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "rss"
     environment:
       - TZ=America/Chicago
       - CRON_MIN=*/5
-    ports:
-      - 8080:80
     volumes:
       - ./data:/var/www/FreshRSS/data
       - ./extensions:/var/www/FreshRSS/extensions
@@ -59,9 +42,6 @@ services:
       context: .
       dockerfile: caddy/Dockerfile
     container_name: caddy
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "caddy"
     hostname: caddy
     restart: unless-stopped
     healthcheck:
@@ -71,9 +51,9 @@ services:
       retries: 5
       start_period: 30s
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:80:80"
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:443:443"
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:443:443/udp"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./www:/usr/share/caddy:ro
@@ -91,15 +71,11 @@ services:
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "pihole"
     environment:
       - TZ=America/Chicago
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "8081:80"
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:53:53/tcp"
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:53:53/udp"
     volumes:
       - pihole_data:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
@@ -110,13 +86,10 @@ services:
   golink:
     image: ghcr.io/tailscale/golink:main
     container_name: golink
-    labels:
-      tsdproxy.enable: "true"
-      tsdproxy.name: "go"
     restart: unless-stopped
     user: root
     environment:
-      - TS_AUTHKEY=${TSDPROXY_AUTHKEY}
+      - TS_AUTHKEY=${GO_LINK_TS_AUTHKEY:-${TSDPROXY_AUTHKEY}}
     volumes:
       - /opt/golink/data:/home/nonroot
     networks:
@@ -165,7 +138,6 @@ services:
 
 volumes:
   tsidp-data:
-  tsdproxydata:
   caddy_data:
   caddy_config:
   pihole_data:

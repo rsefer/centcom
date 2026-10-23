@@ -2,8 +2,7 @@
 
 Central Command for my local network.
 
-TSDProxy allows easy connection of each service to Tailscale.
-
+Services are reached through Caddy on the host's Tailscale IP.
 ## Installation
 1. Boot Raspberry PI using default Raspian image
 2. Install git: `sudo apt install git`
@@ -12,10 +11,11 @@ TSDProxy allows easy connection of each service to Tailscale.
 5. [Install Tailscale on-device](https://login.tailscale.com/admin/machines/new-linux)
 	- run with the following flags but NOT with --accept-routes
 	- --advertise-routes=192.168.0.0/24 --advertise-exit-node
-6. Generate [Tailscale API key](https://login.tailscale.com/admin/settings/keys)
+6. Generate a Tailscale auth key for GoLinks from [Tailscale settings](https://login.tailscale.com/admin/settings/keys)
 7. Fill in `.env`
-	- `TSDPROXY_HOSTNAME` can be obtained by running `tailscale ip -4`
-8. Run `docker compose up -d`
+	- `TAILSCALE_IP` is the host's Tailscale IPv4 address, available from `tailscale ip -4`
+	- `GO_LINK_TS_AUTHKEY` is the GoLinks auth key
+8. Run `docker compose up -d --remove-orphans` to remove any previously deployed TSDProxy container.
 
 ```sh
 # update all builds
@@ -30,7 +30,7 @@ docker compose restart caddy
 
 ## Power outage recovery
 - `setup.sh` installs an `@reboot` cron job that runs `boot-recover.sh`.
-- On boot, that script waits for Docker, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
+- On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
 ## Host monitoring (Beszel)
@@ -42,10 +42,10 @@ docker compose restart caddy
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:
 	- Record name: `*.vpn` when the hosted zone is `rsefer.com`, or `*` when the hosted zone is `vpn.rsefer.com`.
-	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4` (the same value as `TSDPROXY_HOSTNAME`).
+	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4`.
 	- TTL: 300 seconds is a reasonable value.
 - The wildcard makes new one-level hostnames such as `rss.vpn.rsefer.com` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
-- DNS only resolves the hostname; each service still needs its TSDProxy label and Caddy route. The Tailscale IP keeps the service reachable only from devices that can access the tailnet.
+- DNS only resolves the hostname; Caddy routes requests to services on the private Docker network. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to the host's Tailscale IP. FreshRSS and the Pi-hole web UI have no directly published ports.
 
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
@@ -80,6 +80,6 @@ docker compose restart caddy
 	]
 }
 ```
-- Redeploy with `docker compose pull --ignore-buildable && docker compose build caddy && docker compose up -d`.
+- Redeploy with `docker compose pull --ignore-buildable && docker compose build caddy && docker compose up -d --remove-orphans`.
 - Check issuance with `docker compose logs -f caddy` and look for successful certificate obtain events.
 - If issuance fails after an interrupted attempt, delete any stale `_acme-challenge.*` TXT records in Route53 for `vpn.domain.com`, and any `*.vpn.domain.com`, then restart Caddy.
