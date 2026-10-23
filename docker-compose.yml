@@ -89,7 +89,7 @@ services:
     restart: unless-stopped
     user: root
     environment:
-      - TS_AUTHKEY=${GO_LINK_TS_AUTHKEY:-${TSDPROXY_AUTHKEY}}
+      - TS_AUTHKEY=${GO_LINK_TS_AUTHKEY}
     volumes:
       - /opt/golink/data:/home/nonroot
     networks:
