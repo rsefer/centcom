@@ -46,9 +46,6 @@ go.{$DOMAIN} {
 ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }
-idp.{$DOMAIN} {
-  import ts_upstream idp
-}
 pihole.{$DOMAIN} {
   reverse_proxy pihole:80
 }
