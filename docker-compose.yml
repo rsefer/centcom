@@ -131,21 +131,6 @@ services:
       - caddy_net
     restart: unless-stopped
 
-  ntfy:
-    image: binwiederhier/ntfy:v2.33.1
-    container_name: ntfy
-    command: ["serve"]
-    environment:
-      - TZ=America/Chicago
-      - NTFY_BASE_URL=https://ntfy.${DOMAIN}
-      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
-      - NTFY_BEHIND_PROXY=true
-    volumes:
-      - ntfy_data:/var/cache/ntfy
-    networks:
-      - caddy_net
-    restart: unless-stopped
-
 volumes:
   tsidp-data:
   tsdproxydata:
@@ -154,7 +139,6 @@ volumes:
   pihole_data:
   pihole_dnsmasq:
   uptime-kuma-data:
-  ntfy_data:
 
 networks:
   caddy_net:
