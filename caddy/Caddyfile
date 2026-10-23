@@ -1,9 +1,7 @@
 {
-  debug
   cert_issuer acme {
     dns route53 {
       hosted_zone_id {$ROUTE53_HOSTED_ZONE_ID}
-      debug_logging true
       wait_for_route53_sync true
     }
     propagation_delay 30s
@@ -56,14 +54,4 @@ rss.{$DOMAIN} {
 }
 uptime.{$DOMAIN} {
   import ts_upstream uptime
-  tls {
-    issuer acme {
-      dns route53 {
-        hosted_zone_id {$ROUTE53_HOSTED_ZONE_ID}
-        debug_logging true
-        wait_for_route53_sync true
-      }
-      propagation_delay 60s
-    }
-  }
 }
