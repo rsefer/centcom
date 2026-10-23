@@ -35,7 +35,12 @@ docker compose restart caddy
 
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
-- A records on the live dns zone (ie. [service].vpn.rsefer.com) should point to the `centcom` Tailscale IP
+- To avoid creating an A record for every service, add one wildcard A record in Route 53:
+	- Record name: `*.vpn` when the hosted zone is `rsefer.com`, or `*` when the hosted zone is `vpn.rsefer.com`.
+	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4` (the same value as `TSDPROXY_HOSTNAME`).
+	- TTL: 300 seconds is a reasonable value.
+- The wildcard makes new one-level hostnames such as `uptime.vpn.rsefer.com` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
+- DNS only resolves the hostname; each service still needs its TSDProxy label and Caddy route. The Tailscale IP keeps the service reachable only from devices that can access the tailnet.
 
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
