@@ -49,6 +49,9 @@ idp.{$DOMAIN} {
 pihole.{$DOMAIN} {
   reverse_proxy pihole:80
 }
+ntfy.{$DOMAIN} {
+  reverse_proxy ntfy:80
+}
 rss.{$DOMAIN} {
   import ts_upstream rss
 }
