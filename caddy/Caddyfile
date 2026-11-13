@@ -49,6 +49,14 @@ go.{$DOMAIN} {
 gym.{$DOMAIN} {
   reverse_proxy opengym-app:80
 }
+gym-mcp.{$DOMAIN} {
+  handle /mcp {
+    reverse_proxy opengym-mcp:8000
+  }
+  handle {
+    respond "Not found" 404
+  }
+}
 ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }

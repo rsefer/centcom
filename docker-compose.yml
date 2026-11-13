@@ -46,6 +46,34 @@ services:
       retries: 3
       start_period: 30s
 
+  opengym-mcp:
+    image: centcom/opengym-mcp:local
+    build:
+      context: ./opengym-mcp
+    container_name: opengym-mcp
+    profiles:
+      - opengym-mcp
+    environment:
+      - OPENGYM_DATA=/data
+      - OPENGYM_UID=${OPENGYM_MCP_UID:-}
+      - OPENGYM_URL=https://gym.${DOMAIN}
+      - OPENGYM_TOKEN=${OPENGYM_MCP_PAIRING_TOKEN:-}
+      - SUPERGATEWAY_API_KEY=${OPENGYM_MCP_ACCESS_TOKEN:-}
+    volumes:
+      - opengym_data:/data:ro
+    depends_on:
+      opengym-api:
+        condition: service_healthy
+    networks:
+      - caddy_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/healthz"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
   rss:
     image: freshrss/freshrss:latest
     container_name: rss

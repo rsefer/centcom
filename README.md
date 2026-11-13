@@ -21,8 +21,8 @@ Services are reached through Caddy on the host's Tailscale IP.
 # update all builds
 ./reload
 
-# restart caddy when making caddyfile changes
-docker compose restart caddy
+# recreate caddy after Caddyfile changes to refresh its file bind mount
+docker compose up -d --no-deps --force-recreate caddy
 
 # force boot recovery routine manually
 ./boot-recover.sh
@@ -45,12 +45,47 @@ docker compose restart caddy
 ## openGym
 - [openGym](https://github.com/DuarteSantos8/openGym) is available at `https://gym.vpn.rsefer.com` (or `https://gym.${DOMAIN}` with your configured domain).
 - `opengym-app` uses the upstream `opengym-web` image to serve the browser app and proxy `/api/` to `opengym-api:3000`. Neither service publishes a host port; access is through Caddy on Tailscale.
-- Deploy with `docker compose pull opengym-api opengym-app && docker compose up -d opengym-api opengym-app`, then `docker compose restart caddy` to load the new route.
+- Deploy with `docker compose pull opengym-api opengym-app && docker compose up -d opengym-api opengym-app`, then `docker compose up -d --no-deps --force-recreate caddy` to load the new route. Recreating Caddy refreshes its file bind mount if Git replaced the Caddyfile; a reload alone can still read the old file. Initial certificate issuance can take a few minutes.
 - With Tailscale connected, open the gym URL in Safari and create your profile using a passkey. The first profile on a fresh instance becomes the admin; create yours before sharing access. Sign up as a profile rather than continuing as a guest: guest data stays in the browser.
 - Install the [iPhone app](https://apps.apple.com/app/id6822275400). In the signed-in browser, open Settings > Account > **Pair the mobile app** and confirm your identity. In the iPhone app, choose **Connect to my server** and enter the gym URL (not `/api`) and the pairing code within five minutes.
 - Keep Tailscale connected on the iPhone for pairing and sync. Workouts can be logged offline and sync when the server is reachable again. The browser app is useful for setup and administration even if you train almost exclusively in the iPhone app.
 - The API handles mobile CORS and bearer-token authentication; do not add proxy authentication or CORS headers to this route.
 - Accounts, passkeys, session secrets, workouts, and uploaded media persist in the `opengym_data` Docker volume. Back up the entire volume; stop `opengym-api` while taking a consistent backup. Changing `DOMAIN` changes the passkey hostname and requires new passkeys.
+
+### Remote MCP (optional)
+- The `opengym-mcp` service wraps upstream's stdio MCP with [Supergateway](https://github.com/supercorp-ai/supergateway), providing Streamable HTTP at `https://gym-mcp.vpn.rsefer.com/mcp`. Clients need Tailscale connectivity and support for remote MCP with a custom authentication header; this is not an OAuth endpoint or a public cloud connector.
+- It reads `opengym_data` read-only and sends workout writes through `https://gym.${DOMAIN}` using a separate paired-account token. It has no published host port. All clients share one openGym profile and can read its data and log workouts; do not distribute the access token to untrusted clients. Read results can be sent to the client's AI provider.
+- Build the image: `docker compose build opengym-mcp`.
+- In the signed-in gym browser app, open Settings > Account > **Pair the mobile app**. Redeem the five-minute code with `docker compose run --rm --no-deps --entrypoint node opengym-mcp mcp/scripts/pair.mjs https://gym.vpn.rsefer.com YOUR-CODE`. Store the printed token as `OPENGYM_MCP_PAIRING_TOKEN` in `.env`, never in Git or a chat. This token grants full account access. It expires after `SESSION_DAYS` (90 by default); upstream's MCP does not renew it automatically. Sign out everywhere revokes it and also unpairs phones.
+- Generate a separate random client token with `openssl rand -hex 32` and store it as `OPENGYM_MCP_ACCESS_TOKEN` in `.env`. Set `OPENGYM_MCP_UID` to the same profile's Account ID if more than one profile exists. Protect `.env` with `chmod 600 .env`.
+- Add `COMPOSE_PROFILES=opengym-mcp` to `.env` so normal updates and boot recovery include the service. Start it with `docker compose up -d opengym-mcp`, then refresh Caddy with `docker compose up -d --no-deps --force-recreate caddy`. Initial certificate issuance can take a few minutes.
+- Configure each client with URL `https://gym-mcp.vpn.rsefer.com/mcp` and header `Authorization: Bearer YOUR-ACCESS-TOKEN`. Use the **client access token**, not the paired-account token. The gateway rejects missing or incorrect tokens with HTTP 401; only `/mcp` is exposed by Caddy.
+- For VS Code, add an HTTP server to its MCP configuration using the editor's secure input prompt:
+
+```json
+{
+  "inputs": [
+    {
+      "id": "opengym-mcp-token",
+      "type": "promptString",
+      "description": "openGym MCP client access token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "opengym": {
+      "type": "http",
+      "url": "https://gym-mcp.vpn.rsefer.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:opengym-mcp-token}"
+      }
+    }
+  }
+}
+```
+
+- Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. The container refuses to start with either token unset. To rotate client access, update `OPENGYM_MCP_ACCESS_TOKEN`, recreate the service, and update clients. To renew workout-write access, pair again, replace `OPENGYM_MCP_PAIRING_TOKEN`, and recreate the service.
+- The Dockerfile pins the upstream source revision and gateway version. Updating the API does not automatically update the MCP source; update its pin and rebuild after checking upstream compatibility.
 
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time

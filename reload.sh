@@ -38,7 +38,7 @@ wait_for_service() {
 }
 
 docker compose pull --ignore-buildable
-docker compose build caddy
+docker compose build
 docker compose up -d --remove-orphans
 
 wait_for_service caddy 90
