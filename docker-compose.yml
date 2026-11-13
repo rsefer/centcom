@@ -9,6 +9,43 @@ services:
       - caddy_net
     restart: unless-stopped
 
+  opengym-api:
+    image: ghcr.io/duartesantos8/opengym-api:latest
+    container_name: opengym-api
+    environment:
+      - PORT=3000
+      - DATA_DIR=/data
+      - RP_ID=gym.${DOMAIN}
+      - ORIGIN=https://gym.${DOMAIN}
+      - RP_NAME=openGym
+      - TRUST_PROXY=1
+      - FIRST_USER_ADMIN=1
+    volumes:
+      - opengym_data:/data
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
+  opengym-app:
+    image: ghcr.io/duartesantos8/opengym-web:latest
+    container_name: opengym-app
+    environment:
+      - BACKEND=opengym-api
+      - PORT=3000
+      - NGINX_PORT=80
+    depends_on:
+      opengym-api:
+        condition: service_healthy
+    networks:
+      - caddy_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   rss:
     image: freshrss/freshrss:latest
     container_name: rss
@@ -136,6 +173,7 @@ volumes:
   beszel_data:
   beszel_socket:
   beszel_agent_data:
+  opengym_data:
 
 networks:
   caddy_net:

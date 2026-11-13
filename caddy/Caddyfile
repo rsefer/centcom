@@ -46,6 +46,9 @@ draw.{$DOMAIN} {
 go.{$DOMAIN} {
   import ts_upstream go
 }
+gym.{$DOMAIN} {
+  reverse_proxy opengym-app:80
+}
 ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }

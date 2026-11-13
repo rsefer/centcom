@@ -42,6 +42,16 @@ docker compose restart caddy
 - Excalidraw is available at `https://draw.vpn.rsefer.com` through Caddy.
 - Drawings autosave in the browser, not in a server volume. Export `.excalidraw` files to back them up or move them between devices.
 
+## openGym
+- [openGym](https://github.com/DuarteSantos8/openGym) is available at `https://gym.vpn.rsefer.com` (or `https://gym.${DOMAIN}` with your configured domain).
+- `opengym-app` uses the upstream `opengym-web` image to serve the browser app and proxy `/api/` to `opengym-api:3000`. Neither service publishes a host port; access is through Caddy on Tailscale.
+- Deploy with `docker compose pull opengym-api opengym-app && docker compose up -d opengym-api opengym-app`, then `docker compose restart caddy` to load the new route.
+- With Tailscale connected, open the gym URL in Safari and create your profile using a passkey. The first profile on a fresh instance becomes the admin; create yours before sharing access. Sign up as a profile rather than continuing as a guest: guest data stays in the browser.
+- Install the [iPhone app](https://apps.apple.com/app/id6822275400). In the signed-in browser, open Settings > Account > **Pair the mobile app** and confirm your identity. In the iPhone app, choose **Connect to my server** and enter the gym URL (not `/api`) and the pairing code within five minutes.
+- Keep Tailscale connected on the iPhone for pairing and sync. Workouts can be logged offline and sync when the server is reachable again. The browser app is useful for setup and administration even if you train almost exclusively in the iPhone app.
+- The API handles mobile CORS and bearer-token authentication; do not add proxy authentication or CORS headers to this route.
+- Accounts, passkeys, session secrets, workouts, and uploaded media persist in the `opengym_data` Docker volume. Back up the entire volume; stop `opengym-api` while taking a consistent backup. Changing `DOMAIN` changes the passkey hostname and requires new passkeys.
+
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:
