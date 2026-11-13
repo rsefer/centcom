@@ -38,6 +38,10 @@ docker compose restart caddy
 - The Compose-managed agent uses host networking, a shared Unix socket, and the read-only Docker socket for host and container metrics.
 - After creating the hub admin account, add a system named `centcom` using `/beszel_socket/beszel.sock` as its Host / IP. Put the generated KEY and TOKEN in `.env` as `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` before starting the agent.
 
+## Excalidraw
+- Excalidraw is available at `https://draw.vpn.rsefer.com` through Caddy.
+- Drawings autosave in the browser, not in a server volume. Export `.excalidraw` files to back them up or move them between devices.
+
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:
