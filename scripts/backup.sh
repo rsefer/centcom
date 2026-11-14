@@ -15,10 +15,17 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$ROOT_DIR"
 
+# .env may contain values with spaces (e.g. SSH keys), which are not
+# shell-safe, so extract only the backup settings instead of sourcing it.
+env_get() {
+	grep "^$1=" .env 2>/dev/null | head -n 1 | cut -d= -f2-
+}
+
 if [ -f .env ]; then
-	set -a
-	. ./.env
-	set +a
+	BACKUP_ROOT="${BACKUP_ROOT:-$(env_get BACKUP_ROOT)}"
+	BACKUP_RETENTION="${BACKUP_RETENTION:-$(env_get BACKUP_RETENTION)}"
+	BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-$(env_get BACKUP_S3_BUCKET)}"
+	BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-$(env_get BACKUP_S3_PREFIX)}"
 fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/centcom-backups}"
