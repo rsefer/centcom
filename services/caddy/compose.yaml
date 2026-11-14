@@ -19,7 +19,6 @@ services:
       - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./www:/usr/share/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:

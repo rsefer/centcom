@@ -36,9 +36,18 @@ make reload
 # recreate caddy after Caddyfile changes to refresh its file bind mount
 docker compose up -d --no-deps --force-recreate caddy
 
+# rebuild caddy after dashboard changes (dashboard is baked into the image)
+docker compose build caddy && docker compose up -d --no-deps caddy
+
 # force boot recovery routine manually
 make boot-recover
 ```
+
+## Dashboard
+- The landing page at `https://${DOMAIN}` is a React + [Radix Themes](https://www.radix-ui.com/themes) app in `services/caddy/www`.
+- It is built inside the Caddy image (Node build stage in `services/caddy/Dockerfile`); the Pi does not need Node installed. After changing the dashboard, run `docker compose build caddy && docker compose up -d --no-deps caddy` (or `make reload`).
+- Press `⌘K` (or `Ctrl+K`) to open the service search palette. If the search narrows to one match, `Enter` opens it. Dark mode follows the OS `prefers-color-scheme`.
+- Service links derive their hostnames from the page's own hostname, so no domain is hard-coded. For local development, run `npm install && npm run dev` in `services/caddy/www`.
 
 ## Power outage recovery
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.

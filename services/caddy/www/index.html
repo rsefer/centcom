@@ -4,37 +4,9 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>CENTCOM</title>
-	<link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-
-<div class="container">
-	<h1>CENTCOM</h1>
-	<div class="services">
-		<service-card service="ha" iconImage="images/home-assistant.svg" title="Home Assistant"></service-card>
-		<service-card service="pihole" path="/admin/" iconImage="images/pi-hole.svg" title="Pi-hole"></service-card>
-		<service-card service="go" iconImage="images/square-up-right.svg" title="Go Links"></service-card>
-		<service-card service="rss" iconImage="images/freshrss.svg" title="FreshRSS"></service-card>
-		<service-card service="draw" iconImage="images/excalidraw.svg" title="Excalidraw"></service-card>
-		<service-card service="gym" iconImage="images/opengym.svg" title="OpenGym"></service-card>
-		<service-card href="https://login.tailscale.com/admin/machines" iconImage="images/tailscale.svg" title="Tailscale Admin"></service-card>
-		<service-card service="beszel" path="/system/5960lpcoqgddcj3" iconImage="images/beszel.svg" title="Beszel"></service-card>
-	</div>
-</div>
-
-<dialog id="service-dialog" class="service-dialog" aria-labelledby="service-dialog-title">
-	<div class="dialog-header">
-		<h2 id="service-dialog-title">Find a service</h2>
-		<button class="dialog-close" type="button" aria-label="Close service search">&times;</button>
-	</div>
-	<label class="visually-hidden" for="service-search">Search services</label>
-	<input id="service-search" type="search" autocomplete="off" placeholder="Search services..." />
-	<ul id="service-results" class="service-results"></ul>
-	<p id="service-search-status" class="visually-hidden" role="status" aria-live="polite"></p>
-	<p class="dialog-hint">Press Escape to close.</p>
-</dialog>
-
-<script type="module" src="./service-card.js"></script>
-
+	<div id="root"></div>
+	<script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
