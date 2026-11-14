@@ -55,7 +55,7 @@ make boot-recover
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
 ## Backups
-- `scripts/backup.sh` backs up all persistent data to a timestamped directory under `~/centcom-backups/`, prunes to the newest 10 backups, and syncs each new backup to S3. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
+- `scripts/backup.sh` backs up all persistent data to a timestamped directory under `~/centcom-backups/`, prunes to the newest 30 backups, and syncs each new backup to S3. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
 - Included: the `opengym_data`, `pihole_data`, `pihole_dnsmasq`, `beszel_data`, `beszel_agent_data`, and `caddy_data` volumes; FreshRSS `data/` and `extensions/`; GoLink `/opt/golink/data`; and `.env` (stored as `env`, mode 600).
 - **openGym uploaded media (progress photos in `uploads/`) is excluded** to keep backups small. Everything else — accounts, passkeys, workouts, server secrets — is included. `opengym-api` is stopped briefly during its archive for a consistent snapshot and restarted automatically.
 - **Pi-hole query history and the compiled blocklist are excluded** (together they are ~290MB of regenerable data). Config is fully covered: `pihole.toml`, `dnsmasq.conf`, `hosts/`, and Pi-hole's own rolling `config_backups/` and `gravity_backups/` (config-only gravity snapshots) are included. After restoring `pihole_data`, recover the adlist/group config with `docker exec pihole cp /etc/pihole/gravity_backups/gravity.db.1 /etc/pihole/gravity.db` and rebuild the blocklist with `docker exec pihole pihole -g`.

@@ -5,7 +5,7 @@
 #
 # Configuration (via .env or environment):
 #   BACKUP_ROOT       Local backup destination (default: ~/centcom-backups)
-#   BACKUP_RETENTION  Number of local backups to keep (default: 10)
+#   BACKUP_RETENTION  Number of local backups to keep (default: 30)
 #   BACKUP_S3_BUCKET  S3 bucket name; S3 sync is skipped when unset
 #   BACKUP_S3_PREFIX  Key prefix inside the bucket (default: centcom)
 
@@ -29,7 +29,7 @@ if [ -f .env ]; then
 fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/centcom-backups}"
-BACKUP_RETENTION="${BACKUP_RETENTION:-10}"
+BACKUP_RETENTION="${BACKUP_RETENTION:-30}"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
 
