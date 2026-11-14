@@ -87,6 +87,12 @@ docker compose up -d --no-deps --force-recreate caddy
 - Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. The container refuses to start with either token unset. To rotate client access, update `OPENGYM_MCP_ACCESS_TOKEN`, recreate the service, and update clients. To renew workout-write access, pair again, replace `OPENGYM_MCP_PAIRING_TOKEN`, and recreate the service.
 - The Dockerfile pins the upstream source revision and gateway version. Updating the API does not automatically update the MCP source; update its pin and rebuild after checking upstream compatibility.
 
+## Sure Finance
+- [Sure](https://github.com/we-promise/sure) is available at `https://sure.vpn.rsefer.com`. The web app is routed through Caddy; PostgreSQL and Redis are isolated on a private Docker network.
+- Before starting Sure, generate two different secrets with `openssl rand -hex 64` and `openssl rand -hex 32`. Put the results in `.env` as `SURE_SECRET_KEY_BASE` and `SURE_POSTGRES_PASSWORD`, respectively, and protect the file with `chmod 600 .env`. Keep the same `SURE_SECRET_KEY_BASE` for the lifetime of the installation; changing it can make encrypted data unreadable.
+- Start the services with `docker compose up -d sure-web sure-worker sure-db sure-redis`, then recreate Caddy with `docker compose up -d --no-deps --force-recreate caddy`. Open the Sure URL and create the first account; after setup, set onboarding to **Closed** in Settings > Self-Hosting to prevent new signups.
+- Accounts and financial data persist in `sure_postgres_data`; uploaded files persist in `sure_app_storage`. The upstream [Docker guide](https://github.com/we-promise/sure/blob/main/docs/hosting/docker.md) covers Sure-specific backup and upgrade options.
+
 # Tailscale config
 - Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:

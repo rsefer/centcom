@@ -66,3 +66,6 @@ pihole.{$DOMAIN} {
 rss.{$DOMAIN} {
   reverse_proxy rss:80
 }
+sure.{$DOMAIN} {
+  reverse_proxy sure-web:3000
+}
