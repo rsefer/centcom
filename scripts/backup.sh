@@ -57,27 +57,33 @@ archive_mount() {
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_ROOT" "$BACKUP_DIR"
 
-# openGym: stop the API so the sqlite database is archived consistently.
-opengym_was_running=""
-if [ -n "$(docker compose ps -q --status running opengym-api 2>/dev/null)" ]; then
-	opengym_was_running=1
-	echo "Stopping opengym-api for a consistent backup"
-	docker compose stop opengym-api
-fi
+# Some services are stopped briefly so their sqlite databases are archived
+# consistently; all stopped services are restarted even if the script fails.
+stopped_services=""
 
-restart_opengym() {
-	if [ -n "$opengym_was_running" ]; then
-		echo "Restarting opengym-api"
-		docker compose start opengym-api
-		opengym_was_running=""
+stop_service() {
+	if [ -n "$(docker compose ps -q --status running "$1" 2>/dev/null)" ]; then
+		echo "Stopping $1 for a consistent backup"
+		docker compose stop "$1"
+		stopped_services="$stopped_services $1"
 	fi
 }
-trap restart_opengym EXIT
+
+restart_services() {
+	for svc in $stopped_services; do
+		echo "Restarting $svc"
+		docker compose start "$svc"
+	done
+	stopped_services=""
+}
+trap restart_services EXIT
+
+stop_service opengym-api
 
 # openGym media (progress photos under uploads/) is excluded to keep backups
 # small; everything else (accounts, passkeys, workouts, secrets) is included.
 archive_mount opengym_data centcom_opengym_data --exclude './uploads' --exclude './uploads/*'
-restart_opengym
+restart_services
 
 # Remaining named volumes (live archives; their sqlite data is low-write).
 # Pi-hole: query history (pihole-FTL.db) and the compiled blocklist
@@ -93,7 +99,25 @@ archive_mount pihole_data centcom_pihole_data \
 	--exclude './listsCache' \
 	--exclude './listsCache/*'
 archive_mount pihole_dnsmasq centcom_pihole_dnsmasq
-archive_mount beszel_data centcom_beszel_data
+
+# Beszel: historical metrics (system_stats, container_stats) are excluded by
+# pruning a working copy of the PocketBase database. Monitor definitions
+# (systems), users, alert config, and the hub's SSH key are kept. The hub is
+# stopped briefly for a consistent copy.
+stop_service beszel
+echo "Backing up beszel_data"
+if ! docker run --rm -v centcom_beszel_data:/source:ro -v "$BACKUP_DIR":/backup alpine sh -c '
+	apk add --no-cache sqlite >/dev/null &&
+	cp -a /source /work &&
+	sqlite3 /work/data.db "DELETE FROM system_stats; DELETE FROM container_stats; VACUUM;" &&
+	rm -f /work/data.db-wal /work/data.db-shm &&
+	tar czf /backup/beszel_data.tar.gz -C /work .
+'; then
+	echo "✗ Failed to back up beszel_data"
+	failures="$failures beszel_data"
+fi
+restart_services
+
 archive_mount beszel_agent_data centcom_beszel_agent_data
 archive_mount caddy_data centcom_caddy_data
 
