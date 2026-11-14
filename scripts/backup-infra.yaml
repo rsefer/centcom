@@ -16,7 +16,7 @@ Parameters:
     Description: Key prefix backups are written under (BACKUP_S3_PREFIX)
   ExpirationDays:
     Type: Number
-    Default: 45
+    Default: 100
     Description: Days before backup objects are automatically deleted
 
 Resources:

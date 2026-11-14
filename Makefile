@@ -26,5 +26,5 @@ refresh-rss: ## Trigger a FreshRSS feed refresh (run on the Pi)
 backup: ## Back up all persistent data now (run on the Pi)
 	./scripts/backup.sh
 
-backup-infra: ## Deploy S3 backup bucket + IAM policy: make backup-infra BUCKET=name IAM_USER=name [DAYS=45] (admin AWS creds)
-	./scripts/backup-infra.sh $(BUCKET) $(IAM_USER) $(or $(DAYS),45)
+backup-infra: ## Deploy S3 backup bucket + IAM policy: make backup-infra BUCKET=name IAM_USER=name [DAYS=100] (admin AWS creds)
+	./scripts/backup-infra.sh $(BUCKET) $(IAM_USER) $(or $(DAYS),100)

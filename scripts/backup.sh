@@ -5,7 +5,7 @@
 #
 # Configuration (via .env or environment):
 #   BACKUP_ROOT       Local backup destination (default: ~/centcom-backups)
-#   BACKUP_RETENTION  Number of local backups to keep (default: 30)
+#   BACKUP_RETENTION  Days to retain local backups (default: 100)
 #   BACKUP_S3_BUCKET  S3 bucket name; S3 sync is skipped when unset
 #   BACKUP_S3_PREFIX  Key prefix inside the bucket (default: centcom)
 
@@ -29,7 +29,13 @@ if [ -f .env ]; then
 fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/centcom-backups}"
-BACKUP_RETENTION="${BACKUP_RETENTION:-30}"
+BACKUP_RETENTION="${BACKUP_RETENTION:-100}"
+case "$BACKUP_RETENTION" in
+	0*|*[!0-9]*)
+		echo "BACKUP_RETENTION must be a positive whole number of days" >&2
+		exit 1
+		;;
+esac
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
 
@@ -152,13 +158,10 @@ fi
 
 echo "Backup written to $BACKUP_DIR"
 
-# Prune old local backups beyond the retention count.
-prune_count=0
-for dir in $(ls -1d "$BACKUP_ROOT"/*/ 2>/dev/null | sort -r | tail -n "+$((BACKUP_RETENTION + 1))"); do
-	rm -rf "$dir"
-	prune_count=$((prune_count + 1))
-done
-[ "$prune_count" -gt 0 ] && echo "Pruned $prune_count old backup(s)"
+# Prune timestamped backup directories after their retention period.
+find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
+	-name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]' \
+	-mtime "+$((BACKUP_RETENTION - 1))" -exec rm -rf -- {} +
 
 # Sync the new backup to S3 using the stack's existing AWS credentials.
 if [ -n "${BACKUP_S3_BUCKET:-}" ]; then

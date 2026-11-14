@@ -19,7 +19,7 @@ fi
 
 BUCKET_NAME="$1"
 IAM_USER="$2"
-EXPIRATION_DAYS="${3:-45}"
+EXPIRATION_DAYS="${3:-100}"
 STACK_NAME="centcom-backups"
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
