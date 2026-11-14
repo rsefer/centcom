@@ -1,22 +1,5 @@
 ---
 
-x-sure-db-env: &sure_db_env
-  POSTGRES_USER: sure_user
-  POSTGRES_PASSWORD: ${SURE_POSTGRES_PASSWORD:?Set SURE_POSTGRES_PASSWORD in your .env file}
-  POSTGRES_DB: sure_production
-
-x-sure-rails-env: &sure_rails_env
-  <<: *sure_db_env
-  SECRET_KEY_BASE: ${SURE_SECRET_KEY_BASE:?Set SURE_SECRET_KEY_BASE in your .env file}
-  SELF_HOSTED: "true"
-  RAILS_FORCE_SSL: "false"
-  RAILS_ASSUME_SSL: "true"
-  DB_HOST: sure-db
-  DB_PORT: 5432
-  REDIS_URL: redis://sure-redis:6379/1
-  APP_DOMAIN: sure.${DOMAIN}
-  ONBOARDING_STATE: ${SURE_ONBOARDING_STATE:-open}
-
 services:
 
   excalidraw:
@@ -90,70 +73,6 @@ services:
       timeout: 15s
       retries: 3
       start_period: 30s
-
-  sure-web:
-    image: ghcr.io/we-promise/sure:${SURE_IMAGE_TAG:-stable}
-    container_name: sure-web
-    environment:
-      <<: *sure_rails_env
-    volumes:
-      - sure_app_storage:/rails/storage
-    depends_on:
-      sure-db:
-        condition: service_healthy
-      sure-redis:
-        condition: service_healthy
-    networks:
-      - caddy_net
-      - sure_net
-    restart: unless-stopped
-
-  sure-worker:
-    image: ghcr.io/we-promise/sure:${SURE_IMAGE_TAG:-stable}
-    container_name: sure-worker
-    command: bundle exec sidekiq
-    environment:
-      <<: *sure_rails_env
-    volumes:
-      - sure_app_storage:/rails/storage
-    depends_on:
-      sure-db:
-        condition: service_healthy
-      sure-redis:
-        condition: service_healthy
-    networks:
-      - sure_net
-    restart: unless-stopped
-
-  sure-db:
-    image: postgres:16
-    container_name: sure-db
-    environment:
-      <<: *sure_db_env
-    volumes:
-      - sure_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - sure_net
-    restart: unless-stopped
-
-  sure-redis:
-    image: redis:latest
-    container_name: sure-redis
-    volumes:
-      - sure_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - sure_net
-    restart: unless-stopped
 
   rss:
     image: freshrss/freshrss:latest
@@ -283,12 +202,7 @@ volumes:
   beszel_socket:
   beszel_agent_data:
   opengym_data:
-  sure_app_storage:
-  sure_postgres_data:
-  sure_redis_data:
 
 networks:
   caddy_net:
     external: true
-  sure_net:
-    driver: bridge
