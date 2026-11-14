@@ -80,7 +80,18 @@ archive_mount opengym_data centcom_opengym_data --exclude './uploads' --exclude 
 restart_opengym
 
 # Remaining named volumes (live archives; their sqlite data is low-write).
-archive_mount pihole_data centcom_pihole_data
+# Pi-hole: query history (pihole-FTL.db) and the compiled blocklist
+# (gravity.db, rebuilt by `pihole -g`) are excluded. Config is covered by
+# pihole.toml plus Pi-hole's own rolling config_backups/ and gravity_backups/
+# (config-only gravity snapshots), which are included.
+archive_mount pihole_data centcom_pihole_data \
+	--exclude './gravity.db' \
+	--exclude './gravity_old.db' \
+	--exclude './pihole-FTL.db' \
+	--exclude './pihole-FTL.db-wal' \
+	--exclude './pihole-FTL.db-shm' \
+	--exclude './listsCache' \
+	--exclude './listsCache/*'
 archive_mount pihole_dnsmasq centcom_pihole_dnsmasq
 archive_mount beszel_data centcom_beszel_data
 archive_mount beszel_agent_data centcom_beszel_agent_data
