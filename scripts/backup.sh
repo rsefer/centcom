@@ -98,7 +98,25 @@ archive_mount beszel_agent_data centcom_beszel_agent_data
 archive_mount caddy_data centcom_caddy_data
 
 # Host-path data.
-[ -d "$ROOT_DIR/data" ] && archive_mount freshrss_data "$ROOT_DIR/data"
+# FreshRSS: saved feed items are excluded (users/*/db.sqlite, cache, favicons).
+# Feeds, categories, and per-feed settings are captured by exporting OPML into
+# the data dir first; config.php files are included as-is.
+if [ -n "$(docker compose ps -q --status running rss 2>/dev/null)" ]; then
+	echo "Exporting FreshRSS OPML"
+	if ! docker compose exec -T rss sh -c '
+		cd /var/www/FreshRSS
+		for u in $(./cli/list-users.php); do
+			./cli/export-opml-for-user.php --user "$u" > "data/opml-$u.xml"
+		done
+	'; then
+		echo "✗ Failed to export FreshRSS OPML"
+		failures="$failures freshrss-opml"
+	fi
+fi
+[ -d "$ROOT_DIR/data" ] && archive_mount freshrss_data "$ROOT_DIR/data" \
+	--exclude './cache' \
+	--exclude './favicons' \
+	--exclude './users/*/db.sqlite'
 [ -d "$ROOT_DIR/extensions" ] && archive_mount freshrss_extensions "$ROOT_DIR/extensions"
 [ -d /opt/golink/data ] && archive_mount golink_data /opt/golink/data
 
