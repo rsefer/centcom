@@ -2,6 +2,10 @@
 
 set -eu
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$ROOT_DIR"
+
 TAILSCALE_IP="$(tailscale ip -4)"
 if [ -z "$TAILSCALE_IP" ]; then
 	echo "Could not determine the host's Tailscale IPv4 address"

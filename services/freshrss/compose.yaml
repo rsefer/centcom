@@ -1,0 +1,23 @@
+services:
+  rss:
+    image: freshrss/freshrss:latest
+    container_name: rss
+    environment:
+      - TZ=America/Chicago
+      - CRON_MIN=*/5
+    volumes:
+      - ../../data:/var/www/FreshRSS/data
+      - ../../extensions:/var/www/FreshRSS/extensions
+    networks:
+      - caddy_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/') === false ? 1 : 0);"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  caddy_net:
+    external: true

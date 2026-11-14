@@ -1,0 +1,11 @@
+services:
+  excalidraw:
+    image: excalidraw/excalidraw:latest
+    container_name: excalidraw
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
+networks:
+  caddy_net:
+    external: true

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 CRON_SCHEDULE="*/3 * * * *"
-CRON_COMMAND="~/centcom/refresh-rss.sh"
+CRON_COMMAND="~/centcom/services/freshrss/refresh-rss.sh"
 CRON_JOB="$CRON_SCHEDULE $CRON_COMMAND"
-REBOOT_COMMAND="~/centcom/boot-recover.sh >> ~/centcom/boot-recover.log 2>&1"
+REBOOT_COMMAND="~/centcom/scripts/boot-recover.sh >> ~/centcom/boot-recover.log 2>&1"
 REBOOT_JOB="@reboot $REBOOT_COMMAND"
 
 if crontab -l 2>/dev/null | grep -F "$CRON_COMMAND" > /dev/null; then

@@ -45,4 +45,5 @@ if ! docker network inspect caddy_net > /dev/null 2>&1; then
   docker network create "caddy_net"
 fi
 
-~/centcom/setup-cron.sh
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+"$SCRIPT_DIR/setup-cron.sh"

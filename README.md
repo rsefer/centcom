@@ -3,11 +3,23 @@
 Central Command for my local network.
 
 Services are reached through Caddy on the host's Tailscale IP.
+
+Operational scripts live in `scripts/`, and the FreshRSS updater lives in
+`services/freshrss/`. A `Makefile` wraps them: run `make help` to list targets,
+e.g. `make deploy`, `make reload`, or `make setup`.
+
+Each application is organized under `services/` with its own `compose.yaml`.
+The root `docker-compose.yml` includes those files so the existing `docker compose`
+commands continue to manage the full stack. This uses Docker Compose v2.20+.
+To operate on one application directly, run
+`docker compose --env-file .env -p centcom -f services/<app>/compose.yaml up -d`;
+keep the project name `centcom` so named volumes are shared with the full stack.
+
 ## Installation
 1. Boot Raspberry PI using default Raspian image
 2. Install git: `sudo apt install git`
 3. Clone this repository or run `git clone https://github.com/rsefer/centcom.git && cd centcom`
-4. Run `./setup.sh` or [install docker manually](https://docs.docker.com/engine/install/raspberry-pi-os/)
+4. Run `./scripts/setup.sh` or [install docker manually](https://docs.docker.com/engine/install/raspberry-pi-os/)
 5. [Install Tailscale on-device](https://login.tailscale.com/admin/machines/new-linux)
 	- run with the following flags but NOT with --accept-routes
 	- --advertise-routes=192.168.0.0/24 --advertise-exit-node
@@ -19,17 +31,17 @@ Services are reached through Caddy on the host's Tailscale IP.
 
 ```sh
 # update all builds
-./reload
+make reload
 
 # recreate caddy after Caddyfile changes to refresh its file bind mount
 docker compose up -d --no-deps --force-recreate caddy
 
 # force boot recovery routine manually
-./boot-recover.sh
+make boot-recover
 ```
 
 ## Power outage recovery
-- `setup.sh` installs an `@reboot` cron job that runs `boot-recover.sh`.
+- `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.
 - On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
@@ -98,7 +110,7 @@ docker compose up -d --no-deps --force-recreate caddy
 
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
-- Caddy is built locally from [caddy/Dockerfile](caddy/Dockerfile) to include the Route53 DNS plugin.
+- Caddy is built locally from [services/caddy/Dockerfile](services/caddy/Dockerfile) to include the Route53 DNS plugin.
 - Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `ROUTE53_HOSTED_ZONE_ID` (the public Route 53 hosted zone ID for `rsefer.com`).
 - The IAM principal should have Route53 permissions to list zones and change DNS records for your hosted zone.
 - Example IAM policy (replace `YOUR_HOSTED_ZONE_ID`):

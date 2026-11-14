@@ -15,5 +15,5 @@ ssh "$TARGET_HOST" "
 	fi
 	git fetch origin $TARGET_BRANCH
 	git pull --ff-only origin $TARGET_BRANCH
-	./reload.sh
+	./scripts/reload.sh
 "
