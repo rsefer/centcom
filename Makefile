@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy boot-recover refresh-rss
+.PHONY: help setup setup-cron reload deploy boot-recover refresh-rss backup backup-infra
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -22,3 +22,9 @@ boot-recover: ## Run the boot recovery routine manually (run on the Pi)
 
 refresh-rss: ## Trigger a FreshRSS feed refresh (run on the Pi)
 	./services/freshrss/refresh-rss.sh
+
+backup: ## Back up all persistent data now (run on the Pi)
+	./scripts/backup.sh
+
+backup-infra: ## Deploy S3 backup bucket + IAM policy: make backup-infra BUCKET=name IAM_USER=name [DAYS=45] (admin AWS creds)
+	./scripts/backup-infra.sh $(BUCKET) $(IAM_USER) $(or $(DAYS),45)

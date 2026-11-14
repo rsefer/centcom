@@ -54,6 +54,17 @@ make boot-recover
 - On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
+## Backups
+- `scripts/backup.sh` backs up all persistent data to a timestamped directory under `~/centcom-backups/`, prunes to the newest 10 backups, and syncs each new backup to S3. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
+- Included: the `opengym_data`, `pihole_data`, `pihole_dnsmasq`, `beszel_data`, `beszel_agent_data`, and `caddy_data` volumes; FreshRSS `data/` and `extensions/`; GoLink `/opt/golink/data`; and `.env` (stored as `env`, mode 600).
+- **openGym uploaded media (progress photos in `uploads/`) is excluded** to keep backups small. Everything else — accounts, passkeys, workouts, server secrets — is included. `opengym-api` is stopped briefly during its archive for a consistent snapshot and restarted automatically.
+- Archives are created inside throwaway `alpine` containers, and S3 sync uses the `amazon/aws-cli` image with the credentials already in `.env` — nothing extra to install on the Pi.
+- Configuration in `.env`: `BACKUP_S3_BUCKET` (bucket name; S3 sync is skipped when unset), and optionally `BACKUP_S3_PREFIX` (default `centcom`), `BACKUP_ROOT`, `BACKUP_RETENTION`.
+- Provision the S3 side with CloudFormation: `make backup-infra BUCKET=your-bucket IAM_USER=your-route53-user` (run with **admin** AWS credentials, e.g. `AWS_PROFILE=admin`). The stack (`scripts/backup-infra.yaml`) creates a private, encrypted bucket with a lifecycle rule expiring backups after 45 days (override with `DAYS=n`), plus an IAM managed policy attached to your existing Route53 user granting `s3:PutObject`/`s3:GetObject`/`s3:ListBucket` on the `centcom/` prefix. The bucket is retained if the stack is ever deleted. Re-run to update.
+- Local pruning does not delete from S3; the stack's lifecycle rule caps storage cost instead.
+- Restore a single archive with `./scripts/restore.sh <archive.tar.gz>` — it maps the archive name back to its volume or host path and replaces the target's contents after confirmation. Stop the owning service first (e.g. `docker compose stop opengym-api`), then `docker compose up -d` afterwards. Test a restore occasionally; a backup you've never restored is a hope, not a backup.
+
+
 ## Host monitoring (Beszel)
 - The Beszel hub is available at `https://beszel.vpn.rsefer.com`; its data is stored in the `beszel_data` volume.
 - The Compose-managed agent uses host networking, a shared Unix socket, and the read-only Docker socket for host and container metrics.

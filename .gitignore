@@ -1,2 +1,4 @@
 .env
 boot-recover.log
+backup.log
+.op/plugins/aws.json

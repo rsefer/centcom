@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CENTCOM backup storage: private S3 bucket with lifecycle expiry and an IAM
+  managed policy granting backup sync access to an existing IAM user.
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Name for the backup bucket (must be globally unique)
+  BackupUserName:
+    Type: String
+    Description: Existing IAM user that runs the backup sync (the Route53 DNS user from .env)
+  BackupPrefix:
+    Type: String
+    Default: centcom
+    Description: Key prefix backups are written under (BACKUP_S3_PREFIX)
+  ExpirationDays:
+    Type: Number
+    Default: 45
+    Description: Days before backup objects are automatically deleted
+
+Resources:
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldBackups
+            Status: Enabled
+            Prefix: !Sub '${BackupPrefix}/'
+            ExpirationInDays: !Ref ExpirationDays
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  BackupSyncPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Allows the CENTCOM backup script to sync archives to the backup bucket
+      Users:
+        - !Ref BackupUserName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3BackupSync
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub '${BackupBucket.Arn}/${BackupPrefix}/*'
+
+Outputs:
+  BucketName:
+    Description: Set this as BACKUP_S3_BUCKET in .env
+    Value: !Ref BackupBucket

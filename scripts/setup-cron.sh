@@ -5,6 +5,9 @@ CRON_COMMAND="~/centcom/services/freshrss/refresh-rss.sh"
 CRON_JOB="$CRON_SCHEDULE $CRON_COMMAND"
 REBOOT_COMMAND="~/centcom/scripts/boot-recover.sh >> ~/centcom/boot-recover.log 2>&1"
 REBOOT_JOB="@reboot $REBOOT_COMMAND"
+BACKUP_SCHEDULE="15 3 * * *"
+BACKUP_COMMAND="~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"
+BACKUP_JOB="$BACKUP_SCHEDULE $BACKUP_COMMAND"
 
 if crontab -l 2>/dev/null | grep -F "$CRON_COMMAND" > /dev/null; then
 	echo "✓ Cron job already exists. Skipping."
@@ -30,6 +33,20 @@ else
 		crontab -l | grep "$REBOOT_COMMAND"
 	else
 		echo "✗ Failed to add reboot recovery job"
+		exit 1
+	fi
+fi
+
+if crontab -l 2>/dev/null | grep -F "$BACKUP_COMMAND" > /dev/null; then
+	echo "✓ Backup job already exists. Skipping."
+else
+	(crontab -l 2>/dev/null; echo "$BACKUP_JOB") | crontab -
+	if [ $? -eq 0 ]; then
+		echo "✓ Backup job successfully added!"
+		echo "Job: $BACKUP_JOB"
+		crontab -l | grep "$BACKUP_COMMAND"
+	else
+		echo "✗ Failed to add backup job"
 		exit 1
 	fi
 fi
