@@ -54,6 +54,22 @@ archive_mount() {
 	shift 2
 
 	echo "Backing up $name"
+	case "$source" in
+		/*)
+			if [ ! -d "$source" ]; then
+				echo "✗ Missing directory for $name: $source" >&2
+				failures="$failures $name"
+				return 0
+			fi
+			;;
+		*)
+			if ! docker volume inspect "$source" >/dev/null 2>&1; then
+				echo "✗ Missing or inaccessible volume for $name: $source" >&2
+				failures="$failures $name"
+				return 0
+			fi
+			;;
+	esac
 	if docker run --rm -v "$source":/source:ro -v "$BACKUP_DIR":/backup alpine \
 		tar czf "/backup/$name.tar.gz" -C /source "$@" .; then
 		return 0
@@ -72,7 +88,8 @@ chmod 700 "$BACKUP_ROOT" "$BACKUP_DIR"
 stopped_services=""
 
 stop_service() {
-	if [ -n "$(docker compose ps -q --status running "$1" 2>/dev/null)" ]; then
+	running="$(docker compose ps -q --status running "$1")"
+	if [ -n "$running" ]; then
 		echo "Stopping $1 for a consistent backup"
 		docker compose stop "$1"
 		stopped_services="$stopped_services $1"
@@ -121,7 +138,10 @@ fi
 if has_service beszel; then
 stop_service beszel
 echo "Backing up beszel_data"
-if ! docker run --rm -v centcom_beszel_data:/source:ro -v "$BACKUP_DIR":/backup alpine sh -c '
+if ! docker volume inspect centcom_beszel_data >/dev/null 2>&1; then
+	echo "✗ Missing or inaccessible volume for beszel_data" >&2
+	failures="$failures beszel_data"
+elif ! docker run --rm -v centcom_beszel_data:/source:ro -v "$BACKUP_DIR":/backup alpine sh -c '
 	apk add --no-cache sqlite >/dev/null &&
 	cp -a /source /work &&
 	sqlite3 /work/data.db "DELETE FROM system_stats; DELETE FROM container_stats; VACUUM;" &&
@@ -145,28 +165,37 @@ fi
 # FreshRSS: saved feed items are excluded (users/*/db.sqlite, cache, favicons).
 # Feeds, categories, and per-feed settings are captured by exporting OPML into
 # the data dir first; config.php files are included as-is.
-if has_service rss && [ -n "$(docker compose ps -q --status running rss 2>/dev/null)" ]; then
-	echo "Exporting FreshRSS OPML"
-	if ! docker compose exec -T rss sh -c '
-		cd /var/www/FreshRSS
-		for u in $(./cli/list-users.php); do
-			./cli/export-opml-for-user.php --user "$u" > "data/opml-$u.xml"
-		done
-	'; then
-		echo "✗ Failed to export FreshRSS OPML"
+if has_service rss; then
+	if [ -z "$(docker compose ps -q --status running rss)" ]; then
+		echo "✗ FreshRSS is not running; cannot export OPML" >&2
 		failures="$failures freshrss-opml"
+	else
+		echo "Exporting FreshRSS OPML"
+		if ! docker compose exec -T rss sh -c '
+			set -e
+			cd /var/www/FreshRSS
+			users="$(./cli/list-users.php)"
+			for u in $users; do
+				tmp="data/.opml-$u.xml.tmp"
+				if ./cli/export-opml-for-user.php --user "$u" > "$tmp" && [ -s "$tmp" ]; then
+					mv "$tmp" "data/opml-$u.xml"
+				else
+					rm -f "$tmp"
+					exit 1
+				fi
+			done
+		'; then
+			echo "✗ Failed to export FreshRSS OPML" >&2
+			failures="$failures freshrss-opml"
+		fi
 	fi
-fi
-if has_service rss && [ -d "$ROOT_DIR/data" ]; then
-archive_mount freshrss_data "$ROOT_DIR/data" \
-	--exclude './cache' \
-	--exclude './favicons' \
-	--exclude './users/*/db.sqlite'
-fi
-if has_service rss && [ -d "$ROOT_DIR/extensions" ]; then
+	archive_mount freshrss_data "$ROOT_DIR/data" \
+		--exclude './cache' \
+		--exclude './favicons' \
+		--exclude './users/*/db.sqlite'
 	archive_mount freshrss_extensions "$ROOT_DIR/extensions"
 fi
-if has_service golink && [ -d /opt/golink/data ]; then
+if has_service golink; then
 	archive_mount golink_data /opt/golink/data
 fi
 
@@ -178,10 +207,10 @@ fi
 
 echo "Backup written to $BACKUP_DIR"
 
-# Prune timestamped backup directories after their retention period.
-find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
-	-name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]' \
-	-mtime "+$((BACKUP_RETENTION - 1))" -exec rm -rf -- {} +
+if [ -n "$failures" ]; then
+	echo "Backup incomplete:$failures; not pruning older backups or syncing to S3" >&2
+	exit 1
+fi
 
 # Sync the new backup to S3 using the stack's existing AWS credentials.
 if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
@@ -210,5 +239,10 @@ if [ -n "$failures" ]; then
 	echo "Backup completed with failures:$failures"
 	exit 1
 fi
+
+# Prune timestamped backup directories after their retention period.
+find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
+	-name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]' \
+	-mtime "+$((BACKUP_RETENTION - 1))" -exec rm -rf -- {} +
 
 echo "Backup completed successfully"

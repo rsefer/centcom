@@ -44,9 +44,23 @@ its Compose selection. The existing S3 policy must allow both prefixes. Install 
 host's `.env` is configured, using `make setup-cron`. Future hosts can use
 additional Compose selections and hostnames.
 
-When deploying an uncommitted working tree, those changes are also uncommitted
-on each Pi. Commit and push them, then reconcile the Pi working trees before
-using `make deploy`, which pulls with `--ff-only`.
+### Deploying
+
+Commit and push changes to GitHub, then run `make deploy` from this checkout.
+It discovers host names from the published `docker-compose.<host>.yml` files,
+checks every host before changing any, and deploys the same commit to each.
+It requires Tailscale DNS, SSH access configured for `<host>.local`, a clean
+working tree and active cron on each Pi, and a fast-forwardable `main` branch.
+Local uncommitted changes are not deployed, and local commits not yet pushed
+cause deployment to stop. If a host fails during deployment after preflight,
+earlier hosts may already be updated; fix the problem and run it again.
+`make deploy HOST=northcom.local` targets one SSH host; `BRANCH=name` selects
+another published branch.
+
+For another com, add its host Compose file, configure its matching Tailscale
+hostname and SSH access, and install the repository, `.env`, and `compose.yaml`
+symlink on that Pi before deploying. The one-time migration stashes on the two
+existing Pis are retained; inspect them with `git stash list` on each host.
 
 To advertise the same subnet and an exit node from each Pi, run
 `sh scripts/configure-routing.sh 192.168.4.0/22` on each host and approve both
@@ -100,7 +114,7 @@ make boot-recover
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
 ## Backups
-- `scripts/backup.sh` backs up persistent data for the host's configured Compose services to a timestamped directory under `~/centcom-backups/`, prunes backup directories at least 100 days old based on their modification time, and syncs each new backup to S3. Manual runs do not reduce the retention period. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
+- `scripts/backup.sh` backs up persistent data for the host's configured Compose services to a timestamped directory under `~/centcom-backups/`, prunes backup directories at least 100 days old based on their modification time, and syncs each new backup to S3. Manual runs do not reduce the retention period. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job in each host's local time; logs go to `~/centcom/backup.log`. Deployments ensure the jobs are installed. Run one manually with `make backup` on the host. Missing required data or failed exports make the backup fail without uploading or pruning older backups; check the log for failures. A failed S3 sync also prevents local pruning.
 - Included: the `opengym_data`, `pihole_data`, `pihole_dnsmasq`, `beszel_data`, `beszel_agent_data`, and `caddy_data` volumes; FreshRSS `data/` and `extensions/`; GoLink `/opt/golink/data`; and `.env` (stored as `env`, mode 600).
 - **openGym uploaded media (progress photos in `uploads/`) is excluded** to keep backups small. Everything else — accounts, passkeys, workouts, server secrets — is included. `opengym-api` is stopped briefly during its archive for a consistent snapshot and restarted automatically.
 - **Pi-hole query history and the compiled blocklist are excluded** (together they are ~290MB of regenerable data). Config is fully covered: `pihole.toml`, `dnsmasq.conf`, `hosts/`, and Pi-hole's own rolling `config_backups/` and `gravity_backups/` (config-only gravity snapshots) are included. After restoring `pihole_data`, recover the adlist/group config with `docker exec pihole cp /etc/pihole/gravity_backups/gravity.db.1 /etc/pihole/gravity.db` and rebuild the blocklist with `docker exec pihole pihole -g`.

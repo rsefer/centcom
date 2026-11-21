@@ -14,8 +14,8 @@ setup-cron: ## Install or verify the cron jobs
 reload: ## Pull, build, and restart the full stack (run on the Pi)
 	./scripts/reload.sh
 
-deploy: ## Deploy to the Pi over SSH: make deploy [HOST=centcom] [BRANCH=main]
-	./scripts/remote-deploy.sh $(or $(HOST),centcom) $(or $(BRANCH),main)
+deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host] [BRANCH=main]
+	./scripts/remote-deploy.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)"
 
 boot-recover: ## Run the boot recovery routine manually (run on the Pi)
 	./scripts/boot-recover.sh
