@@ -1,0 +1,67 @@
+name: centcom
+
+services:
+  beszel:
+    extends:
+      file: services/beszel/compose.yaml
+      service: beszel
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18090:8090"
+
+  beszel-agent:
+    extends:
+      file: services/beszel/compose.yaml
+      service: beszel-agent
+
+  excalidraw:
+    extends:
+      file: services/excalidraw/compose.yaml
+      service: excalidraw
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18081:80"
+
+  golink:
+    extends:
+      file: services/golink/compose.yaml
+      service: golink
+
+  opengym-api:
+    extends:
+      file: services/opengym/compose.yaml
+      service: opengym-api
+
+  opengym-app:
+    extends:
+      file: services/opengym/compose.yaml
+      service: opengym-app
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18082:80"
+
+  opengym-mcp:
+    extends:
+      file: services/opengym/compose.yaml
+      service: opengym-mcp
+    build:
+      context: ./services/opengym/mcp
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083:8000"
+
+  rss:
+    extends:
+      file: services/freshrss/compose.yaml
+      service: rss
+    volumes:
+      - ./data:/var/www/FreshRSS/data
+      - ./extensions:/var/www/FreshRSS/extensions
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18084:80"
+
+volumes:
+  beszel_data:
+  beszel_socket:
+  beszel_agent_data:
+  opengym_data:
+
+networks:
+  caddy_net:
+    external: true

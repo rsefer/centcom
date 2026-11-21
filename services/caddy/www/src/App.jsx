@@ -23,7 +23,7 @@ const SERVICES = [
 	{ title: 'Excalidraw', icon: 'images/excalidraw.svg', service: 'draw' },
 	{ title: 'OpenGym', icon: 'images/opengym.svg', service: 'gym' },
 	{ title: 'Tailscale Admin', icon: 'images/tailscale.svg', href: 'https://login.tailscale.com/admin/machines' },
-	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel', path: '/system/5960lpcoqgddcj3' },
+	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel' },
 ];
 
 function serviceHref({ href, service, path = '' }) {

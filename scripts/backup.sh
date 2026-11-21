@@ -36,6 +36,10 @@ case "$BACKUP_RETENTION" in
 		exit 1
 		;;
 esac
+services="$(docker compose config --services)"
+has_service() {
+	printf '%s\n' "$services" | grep -Fxq "$1"
+}
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
 
@@ -84,18 +88,21 @@ restart_services() {
 }
 trap restart_services EXIT
 
+if has_service opengym-api; then
 stop_service opengym-api
 
 # openGym media (progress photos under uploads/) is excluded to keep backups
 # small; everything else (accounts, passkeys, workouts, secrets) is included.
 archive_mount opengym_data centcom_opengym_data --exclude './uploads' --exclude './uploads/*'
 restart_services
+fi
 
 # Remaining named volumes (live archives; their sqlite data is low-write).
 # Pi-hole: query history (pihole-FTL.db) and the compiled blocklist
 # (gravity.db, rebuilt by `pihole -g`) are excluded. Config is covered by
 # pihole.toml plus Pi-hole's own rolling config_backups/ and gravity_backups/
 # (config-only gravity snapshots), which are included.
+if has_service pihole; then
 archive_mount pihole_data centcom_pihole_data \
 	--exclude './gravity.db' \
 	--exclude './gravity_old.db' \
@@ -105,11 +112,13 @@ archive_mount pihole_data centcom_pihole_data \
 	--exclude './listsCache' \
 	--exclude './listsCache/*'
 archive_mount pihole_dnsmasq centcom_pihole_dnsmasq
+fi
 
 # Beszel: historical metrics (system_stats, container_stats) are excluded by
 # pruning a working copy of the PocketBase database. Monitor definitions
 # (systems), users, alert config, and the hub's SSH key are kept. The hub is
 # stopped briefly for a consistent copy.
+if has_service beszel; then
 stop_service beszel
 echo "Backing up beszel_data"
 if ! docker run --rm -v centcom_beszel_data:/source:ro -v "$BACKUP_DIR":/backup alpine sh -c '
@@ -124,14 +133,19 @@ if ! docker run --rm -v centcom_beszel_data:/source:ro -v "$BACKUP_DIR":/backup 
 fi
 restart_services
 
-archive_mount beszel_agent_data centcom_beszel_agent_data
+fi
+if has_service beszel-agent; then
+	archive_mount beszel_agent_data centcom_beszel_agent_data
+fi
+if has_service caddy; then
 archive_mount caddy_data centcom_caddy_data
+fi
 
 # Host-path data.
 # FreshRSS: saved feed items are excluded (users/*/db.sqlite, cache, favicons).
 # Feeds, categories, and per-feed settings are captured by exporting OPML into
 # the data dir first; config.php files are included as-is.
-if [ -n "$(docker compose ps -q --status running rss 2>/dev/null)" ]; then
+if has_service rss && [ -n "$(docker compose ps -q --status running rss 2>/dev/null)" ]; then
 	echo "Exporting FreshRSS OPML"
 	if ! docker compose exec -T rss sh -c '
 		cd /var/www/FreshRSS
@@ -143,12 +157,18 @@ if [ -n "$(docker compose ps -q --status running rss 2>/dev/null)" ]; then
 		failures="$failures freshrss-opml"
 	fi
 fi
-[ -d "$ROOT_DIR/data" ] && archive_mount freshrss_data "$ROOT_DIR/data" \
+if has_service rss && [ -d "$ROOT_DIR/data" ]; then
+archive_mount freshrss_data "$ROOT_DIR/data" \
 	--exclude './cache' \
 	--exclude './favicons' \
 	--exclude './users/*/db.sqlite'
-[ -d "$ROOT_DIR/extensions" ] && archive_mount freshrss_extensions "$ROOT_DIR/extensions"
-[ -d /opt/golink/data ] && archive_mount golink_data /opt/golink/data
+fi
+if has_service rss && [ -d "$ROOT_DIR/extensions" ]; then
+	archive_mount freshrss_extensions "$ROOT_DIR/extensions"
+fi
+if has_service golink && [ -d /opt/golink/data ]; then
+	archive_mount golink_data /opt/golink/data
+fi
 
 # Secrets: the one file that cannot be regenerated.
 if [ -f .env ]; then
@@ -166,6 +186,16 @@ find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
 # Sync the new backup to S3 using the stack's existing AWS credentials.
 if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
 	BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-centcom}"
+	if [ -L "$ROOT_DIR/compose.yaml" ]; then
+		host="$(hostname -s)"
+		case "$host" in
+			''|*[!a-zA-Z0-9._-]*)
+				echo "Invalid hostname for host-specific backup prefix" >&2
+				exit 1
+				;;
+		esac
+		BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX%/}/$host"
+	fi
 	echo "Syncing to s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX/$TIMESTAMP/"
 	if ! docker run --rm --env-file .env -v "$BACKUP_DIR":/backup:ro amazon/aws-cli \
 		s3 sync /backup "s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX/$TIMESTAMP/" --no-progress; then

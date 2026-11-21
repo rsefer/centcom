@@ -15,7 +15,52 @@ To operate on one application directly, run
 `docker compose --env-file .env -p centcom -f services/<app>/compose.yaml up -d`;
 keep the project name `centcom` so named volumes are shared with the full stack.
 
-## Installation
+## Multiple hosts
+
+The original `docker-compose.yml` remains available for a single host. For the
+split deployment, use the same repository, private `.env`, and `centcom`
+project name on each host. Create a host-specific `compose.yaml` symlink:
+Each host file extends the shared service definitions under `services/`.
+
+| Host | Symlink target | Services |
+| --- | --- | --- |
+| northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Beszel agent |
+| southcom | `docker-compose.southcom.yml` | Beszel, Excalidraw, FreshRSS, GoLink, openGym |
+
+For example, on northcom run `ln -s docker-compose.northcom.yml compose.yaml`
+from the repository root; use the southcom target on southcom. Leave
+`COMPOSE_FILE` unset. Set `TAILSCALE_IP_NORTHCOM` and `TAILSCALE_IP_SOUTHCOM`
+to the respective hosts' Tailscale IPv4 addresses in the shared `.env`.
+The northcom Compose configuration derives the app upstreams from southcom's
+address. These app ports are reachable directly
+by devices allowed to connect to southcom over Tailscale, bypassing Caddy.
+Pi-hole DNS remains bound only to northcom's Tailscale IP. Point the existing
+service DNS records at northcom after verifying the split.
+
+With a `compose.yaml` symlink, backups append the host's short hostname to
+the shared `BACKUP_S3_PREFIX` (default `centcom`), producing paths such as
+`centcom/northcom` and `centcom/southcom`. Each host backs up only services in
+its Compose selection. The existing S3 policy must allow both prefixes. Install cron only after the
+host's `.env` is configured, using `make setup-cron`. Future hosts can use
+additional Compose selections and hostnames.
+
+When deploying an uncommitted working tree, those changes are also uncommitted
+on each Pi. Commit and push them, then reconcile the Pi working trees before
+using `make deploy`, which pulls with `--ff-only`.
+
+To advertise the same subnet and an exit node from each Pi, run
+`sh scripts/configure-routing.sh 192.168.4.0/22` on each host and approve both
+devices' routes and exit nodes in the Tailscale admin console. Subnet routers
+can provide failover; clients select exit nodes separately.
+
+For a fresh additional Pi, `./scripts/setup.sh --bootstrap-only` installs Docker
+and Tailscale without deploying services, configuring subnet routes, or adding
+the single-host cron jobs. Run it as the intended login user (not as root),
+then run `sudo tailscale up`, authenticate in the browser, and reconnect to
+pick up Docker group membership. Service placement and backup restoration
+must be configured separately before starting the stack.
+
+## Single-host installation
 1. Boot Raspberry PI using default Raspian image
 2. Install git: `sudo apt install git`
 3. Clone this repository or run `git clone https://github.com/rsefer/centcom.git && cd centcom`
@@ -55,11 +100,11 @@ make boot-recover
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
 ## Backups
-- `scripts/backup.sh` backs up persistent data to a timestamped directory under `~/centcom-backups/`, prunes backup directories at least 100 days old based on their modification time, and syncs each new backup to S3. Manual runs do not reduce the retention period. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
+- `scripts/backup.sh` backs up persistent data for the host's configured Compose services to a timestamped directory under `~/centcom-backups/`, prunes backup directories at least 100 days old based on their modification time, and syncs each new backup to S3. Manual runs do not reduce the retention period. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job; logs go to `~/centcom/backup.log`. Run one manually with `make backup`.
 - Included: the `opengym_data`, `pihole_data`, `pihole_dnsmasq`, `beszel_data`, `beszel_agent_data`, and `caddy_data` volumes; FreshRSS `data/` and `extensions/`; GoLink `/opt/golink/data`; and `.env` (stored as `env`, mode 600).
 - **openGym uploaded media (progress photos in `uploads/`) is excluded** to keep backups small. Everything else — accounts, passkeys, workouts, server secrets — is included. `opengym-api` is stopped briefly during its archive for a consistent snapshot and restarted automatically.
 - **Pi-hole query history and the compiled blocklist are excluded** (together they are ~290MB of regenerable data). Config is fully covered: `pihole.toml`, `dnsmasq.conf`, `hosts/`, and Pi-hole's own rolling `config_backups/` and `gravity_backups/` (config-only gravity snapshots) are included. After restoring `pihole_data`, recover the adlist/group config with `docker exec pihole cp /etc/pihole/gravity_backups/gravity.db.1 /etc/pihole/gravity.db` and rebuild the blocklist with `docker exec pihole pihole -g`.
-- **FreshRSS feed items are excluded** (`users/*/db.sqlite`, `cache/`, `favicons/`). Before archiving, the script exports each user's subscriptions as OPML (`data/opml-<user>.xml`), which carries feeds, categories, and per-feed settings; `config.php` files (including login credentials) are included as-is. After restoring `freshrss_data`, log in and import the OPML via Subscription management → Import/Export, or run `docker exec rss ./cli/import-for-user.php --user <user> --filename data/opml-<user>.xml`. Read/starred state is not preserved.
+- **FreshRSS feed items are excluded** (`users/*/db.sqlite`, `cache/`, `favicons/`). Before archiving, the script exports each user's subscriptions as OPML (`data/opml-<user>.xml`), which carries feeds, categories, and per-feed settings; `config.php` files (including login credentials) are included as-is. After restoring `freshrss_data` and starting FreshRSS, run `sh scripts/restore-freshrss-subscriptions.sh` to initialize the empty SQLite databases and import the OPML. It refuses to modify non-empty databases. Read/starred state is not preserved.
 - **Beszel historical metrics are excluded**: the `system_stats` and `container_stats` tables are deleted from a pruned copy of the PocketBase database before archiving. Monitor definitions, users, alert config, and the hub's agent SSH key (`id_ed25519`) are kept, so a restored hub reconnects to agents immediately and history simply regrows. The hub is stopped briefly during its archive.
 - Archives are created inside throwaway `alpine` containers, and S3 sync uses the `amazon/aws-cli` image with the credentials already in `.env` — nothing extra to install on the Pi.
 - Configuration in `.env`: `BACKUP_S3_BUCKET` (bucket name; S3 sync is skipped when unset), and optionally `BACKUP_S3_PREFIX` (default `centcom`), `BACKUP_ROOT`, `BACKUP_RETENTION` (local retention in days, default 100).
@@ -69,9 +114,9 @@ make boot-recover
 
 
 ## Host monitoring (Beszel)
-- The Beszel hub is available at `https://beszel.vpn.rsefer.com`; its data is stored in the `beszel_data` volume.
-- The Compose-managed agent uses host networking, a shared Unix socket, and the read-only Docker socket for host and container metrics.
-- After creating the hub admin account, add a system named `centcom` using `/beszel_socket/beszel.sock` as its Host / IP. Put the generated KEY and TOKEN in `.env` as `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` before starting the agent.
+- The Beszel hub is available at `https://beszel.vpn.rsefer.com`; its data is stored in the `beszel_data` volume. In the split deployment, the hub and its local agent run on southcom, and northcom runs a separate agent.
+- Agents use host networking and the read-only Docker socket for host and container metrics. The southcom agent connects over a shared Unix socket. The northcom agent listens for authenticated SSH on its Tailscale IP, port 45876, using the hub's public key; it does not use a WebSocket token.
+- Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the shared `.env` using the values provided by the hub for its local agent. In the hub, add or rename the local system to `southcom` with Host / IP `/beszel_socket/beszel.sock`. Add a `northcom` system with its Tailscale IP and port `45876`. For additional hosts, run an agent on each and add a separate system.
 
 ## Excalidraw
 - Excalidraw is available at `https://draw.vpn.rsefer.com` through Caddy.
@@ -79,7 +124,7 @@ make boot-recover
 
 ## openGym
 - [openGym](https://github.com/DuarteSantos8/openGym) is available at `https://gym.vpn.rsefer.com` (or `https://gym.${DOMAIN}` with your configured domain).
-- `opengym-app` uses the upstream `opengym-web` image to serve the browser app and proxy `/api/` to `opengym-api:3000`. Neither service publishes a host port; access is through Caddy on Tailscale.
+- `opengym-app` uses the upstream `opengym-web` image to serve the browser app and proxy `/api/` to `opengym-api:3000`. In the split deployment, the web app also publishes a port on southcom's Tailscale IP for Caddy; the API does not publish a host port.
 - Deploy with `docker compose pull opengym-api opengym-app && docker compose up -d opengym-api opengym-app`, then `docker compose up -d --no-deps --force-recreate caddy` to load the new route. Recreating Caddy refreshes its file bind mount if Git replaced the Caddyfile; a reload alone can still read the old file. Initial certificate issuance can take a few minutes.
 - With Tailscale connected, open the gym URL in Safari and create your profile using a passkey. The first profile on a fresh instance becomes the admin; create yours before sharing access. Sign up as a profile rather than continuing as a guest: guest data stays in the browser.
 - Install the [iPhone app](https://apps.apple.com/app/id6822275400). In the signed-in browser, open Settings > Account > **Pair the mobile app** and confirm your identity. In the iPhone app, choose **Connect to my server** and enter the gym URL (not `/api`) and the pairing code within five minutes.
@@ -129,7 +174,7 @@ make boot-recover
 	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4`.
 	- TTL: 300 seconds is a reasonable value.
 - The wildcard makes new one-level hostnames such as `rss.vpn.rsefer.com` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
-- DNS only resolves the hostname; Caddy routes requests to services on the private Docker network. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to the host's Tailscale IP. FreshRSS and the Pi-hole web UI have no directly published ports.
+- DNS only resolves the hostname; Caddy routes requests to the services. In the single-host deployment they share a Docker network; in the split deployment Caddy reaches southcom over Tailscale. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to northcom's Tailscale IP. The Pi-hole web UI has no directly published port; southcom's FreshRSS port is reachable directly over Tailscale.
 
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.

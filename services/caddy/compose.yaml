@@ -14,9 +14,9 @@ services:
       retries: 5
       start_period: 30s
     ports:
-      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:80:80"
-      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:443:443"
-      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:443:443/udp"
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:80:80"
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:443:443"
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -27,6 +27,11 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - ROUTE53_HOSTED_ZONE_ID=${ROUTE53_HOSTED_ZONE_ID}
+      - BESZEL_UPSTREAM=${BESZEL_UPSTREAM:-beszel:8090}
+      - DRAW_UPSTREAM=${DRAW_UPSTREAM:-excalidraw:80}
+      - GYM_UPSTREAM=${GYM_UPSTREAM:-opengym-app:80}
+      - GYM_MCP_UPSTREAM=${GYM_MCP_UPSTREAM:-opengym-mcp:8000}
+      - RSS_UPSTREAM=${RSS_UPSTREAM:-rss:80}
     networks:
       - caddy_net
 

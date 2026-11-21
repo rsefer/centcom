@@ -1,0 +1,43 @@
+name: centcom
+
+services:
+  caddy:
+    extends:
+      file: services/caddy/compose.yaml
+      service: caddy
+    build:
+      context: ./services/caddy
+    volumes:
+      - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      BESZEL_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18090"
+      DRAW_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18081"
+      GYM_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18082"
+      GYM_MCP_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083"
+      RSS_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18084"
+
+  pihole:
+    extends:
+      file: services/pihole/compose.yaml
+      service: pihole
+
+  beszel-agent:
+    extends:
+      file: services/beszel/compose.yaml
+      service: beszel-agent
+    environment:
+      LISTEN: "${TAILSCALE_IP_NORTHCOM:?Set TAILSCALE_IP_NORTHCOM}:45876"
+      HUB_URL: ""
+      TOKEN: ""
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pihole_data:
+  pihole_dnsmasq:
+  beszel_agent_data:
+  beszel_socket:
+
+networks:
+  caddy_net:
+    external: true

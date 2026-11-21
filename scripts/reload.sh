@@ -45,5 +45,9 @@ docker compose pull --ignore-buildable
 docker compose build
 docker compose up -d --remove-orphans
 
-wait_for_service caddy 90
-wait_for_service rss 90
+services="$(docker compose config --services)"
+for service in caddy rss; do
+	if printf '%s\n' "$services" | grep -Fxq "$service"; then
+		wait_for_service "$service" 90
+	fi
+done

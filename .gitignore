@@ -2,3 +2,6 @@
 boot-recover.log
 backup.log
 .op/plugins/aws.json
+/compose.yaml
+/data/
+/extensions/

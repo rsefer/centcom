@@ -38,20 +38,20 @@ ai.{$DOMAIN} {
   import ts_upstream ai
 }
 beszel.{$DOMAIN} {
-  reverse_proxy beszel:8090
+  reverse_proxy {$BESZEL_UPSTREAM}
 }
 draw.{$DOMAIN} {
-  reverse_proxy excalidraw:80
+  reverse_proxy {$DRAW_UPSTREAM}
 }
 go.{$DOMAIN} {
   import ts_upstream go
 }
 gym.{$DOMAIN} {
-  reverse_proxy opengym-app:80
+  reverse_proxy {$GYM_UPSTREAM}
 }
 gym-mcp.{$DOMAIN} {
   handle /mcp {
-    reverse_proxy opengym-mcp:8000
+    reverse_proxy {$GYM_MCP_UPSTREAM}
   }
   handle {
     respond "Not found" 404
@@ -64,5 +64,5 @@ pihole.{$DOMAIN} {
   reverse_proxy pihole:80
 }
 rss.{$DOMAIN} {
-  reverse_proxy rss:80
+  reverse_proxy {$RSS_UPSTREAM}
 }

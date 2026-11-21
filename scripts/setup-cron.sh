@@ -8,8 +8,15 @@ REBOOT_JOB="@reboot $REBOOT_COMMAND"
 BACKUP_SCHEDULE="15 3 * * *"
 BACKUP_COMMAND="~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"
 BACKUP_JOB="$BACKUP_SCHEDULE $BACKUP_COMMAND"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$(dirname "$SCRIPT_DIR")" || exit 1
+SERVICES="$(docker compose config --services)" || exit 1
 
-if crontab -l 2>/dev/null | grep -F "$CRON_COMMAND" > /dev/null; then
+if [ -L compose.yaml ]; then
+	echo "Multi-host FreshRSS uses its container's CRON_MIN schedule."
+elif ! printf '%s\n' "$SERVICES" | grep -Fxq rss; then
+	echo "FreshRSS is not configured on this host; skipping its cron job."
+elif crontab -l 2>/dev/null | grep -F "$CRON_COMMAND" > /dev/null; then
 	echo "✓ Cron job already exists. Skipping."
 else
 	(crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -

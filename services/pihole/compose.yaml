@@ -5,8 +5,8 @@ services:
     environment:
       - TZ=America/Chicago
     ports:
-      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:53:53/tcp"
-      - "${TAILSCALE_IP:?Set TAILSCALE_IP to the host's Tailscale IPv4 address}:53:53/udp"
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:53:53/tcp"
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:53:53/udp"
     volumes:
       - pihole_data:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d

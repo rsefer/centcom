@@ -4,6 +4,7 @@
 # volume or host path. The target's existing contents are replaced.
 #
 # Usage: ./scripts/restore.sh <path/to/archive.tar.gz>
+# A gzip-compressed archive downloaded with a .tar suffix is also supported.
 # Example: ./scripts/restore.sh ~/centcom-backups/20260101-031500/opengym_data.tar.gz
 #
 # Note: opengym_data backups exclude uploaded media (uploads/), so restored
@@ -24,7 +25,12 @@ if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
 fi
 
 ARCHIVE="$(CDPATH= cd -- "$(dirname -- "$1")" && pwd)/$(basename "$1")"
-NAME="$(basename "$ARCHIVE" .tar.gz)"
+NAME="$(basename "$ARCHIVE")"
+case "$NAME" in
+	*.tar.gz) NAME="${NAME%.tar.gz}" ;;
+	*.tar) NAME="${NAME%.tar}" ;;
+	*) echo "Expected a .tar.gz or .tar backup archive" >&2; exit 1 ;;
+esac
 
 case "$NAME" in
 	opengym_data|pihole_data|pihole_dnsmasq|beszel_data|beszel_agent_data|caddy_data)
