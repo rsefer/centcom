@@ -2,13 +2,9 @@
 // Applied with `make policy-apply`. This file is the whole tailnet policy, so
 // it also carries the pre-existing entries for other devices.
 //
-// STAGE 1 (current): the original allow-all `acls` rule is kept, so nothing
-// outside the Pis changes. The centcom grants are additive and the deny tests
-// are commented out (allow-all would fail them).
-// STAGE 2 (after the Pis are retagged tag:centcom): delete the allow-all rule,
-// uncomment the deny tests, run `make policy-check`, then apply. Anything not
-// granted below is then blocked, including tagged devices' access to
-// non-centcom nodes, so add grants for those first.
+// STAGE 2 (current): no allow-all rule. Only the grants below are permitted, so
+// anything not granted is blocked, including tagged devices' access to
+// non-centcom nodes. Deny tests are enabled.
 //
 // Port inventory (all bound to each host's Tailscale IP):
 //   53 tcp/udp   Pi-hole DNS (northcom, eastcom)
@@ -28,15 +24,6 @@
 		"tag:docktail-host":    ["autogroup:admin"],
 		"tag:docktail-service": ["tag:docktail-host"],
 	},
-
-	// STAGE 2: delete this rule.
-	"acls": [
-		{
-			"action": "accept",
-			"src":    ["*"],
-			"dst":    ["*:*"],
-		},
-	],
 
 	"hosts": {
 		"centcom-lan":    "192.168.4.0/22",
@@ -98,7 +85,13 @@
 		{
 			"src": ["autogroup:member"],
 			"dst": ["ai", "go", "home-assistant"],
-			"ip":  ["tcp:443"],
+			"ip":  ["tcp:80", "tcp:443"],
+		},
+		// Ollama (no auth of its own) on any node, members only.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["*"],
+			"ip":  ["tcp:11434"],
 		},
 		// Subnet routers and exit nodes.
 		{
@@ -143,22 +136,19 @@
 			// Rob's MacBook (admin)
 			"src":    "100.82.246.100",
 			"accept": ["tag:centcom:22", "tag:centcom:53", "tag:centcom:443", "tag:centcom:18081", "ai:443"],
-			// STAGE 2: uncomment.
-			// "deny":   ["tag:centcom:3306", "tag:centcom:45876"],
+			"deny":   ["tag:centcom:3306", "tag:centcom:45876"],
 		},
 		{
 			// Kathryn's MacBook Air (member, not admin)
 			"src":    "100.64.225.122",
 			"accept": ["tag:centcom:53", "tag:centcom:443"],
-			// STAGE 2: uncomment.
-			// "deny":   ["tag:centcom:22", "tag:centcom:18081", "tag:centcom:18090"],
+			"deny":   ["tag:centcom:22", "tag:centcom:18081", "tag:centcom:18090"],
 		},
 		{
 			"src":    "tag:centcom",
 			// 53 is allowed because autogroup:tagged (DNS grant) includes the Pis.
 			"accept": ["tag:centcom:53", "tag:centcom:18081", "tag:centcom:18085", "tag:centcom:45876", "ai:443"],
-			// STAGE 2: uncomment.
-			// "deny":   ["tag:centcom:22", "tag:centcom:3306", "ai:22"],
+			"deny":   ["tag:centcom:22", "tag:centcom:3306", "ai:22"],
 		},
 	],
 }
