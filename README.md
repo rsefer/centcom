@@ -147,8 +147,10 @@ and merge anything you want to keep into the file.
 Rollout, in this order (a node can only take a tag the policy lets you own):
 
 1. Merge the policy in the admin console, keeping the existing allow-all grant for now.
-2. On each Pi, run `sh scripts/configure-routing.sh 192.168.4.0/22`. This runs
-   `tailscale set --advertise-tags=tag:centcom ...`; no re-authentication is needed.
+2. For each already-enrolled Pi, tag it in the admin console (Machines > ... > Edit ACL
+   tags > `tag:centcom`). `tailscale set` has no tag flag, and `tailscale up
+   --advertise-tags` demands every non-default flag again. Then run
+   `sh scripts/configure-routing.sh 192.168.4.0/22` on the Pi; it warns if the tag is missing.
 3. Confirm each Pi shows the tag and "Expiry disabled" in the admin console, and
    `make check-hosts` and `make check-services` still pass.
 4. Remove the allow-all grant, then re-check DNS and a service URL from a phone.
