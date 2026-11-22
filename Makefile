@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy check-hosts check-services check-proxy boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: help setup setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -22,6 +22,12 @@ check-hosts: ## Report drift between hosts (read-only): make check-hosts [HOST=h
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py
+
+generate: ## Regenerate Caddy upstreams and dashboard services from services.toml
+	python3 scripts/services.py generate
+
+dns-records: ## Print the proxy DNS records: make dns-records [PROXY=primary|standby] [BATCH=1]
+	python3 scripts/services.py dns $(or $(PROXY),primary) $(if $(BATCH),--change-batch)
 
 check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROXY_IP=100.x.x.x
 	sh scripts/check-proxy.sh "$(DOMAIN)" "$(PROXY_IP)"

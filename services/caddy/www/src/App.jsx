@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { backupStatus } from './backup-status.js';
 import { statusSummary } from './status-summary.js';
 import './service-grid.css';
+import registry from './services.json';
 import {
 	Box,
 	Badge,
@@ -20,23 +21,19 @@ import {
 	VisuallyHidden,
 } from '@radix-ui/themes';
 
-const PRIMARY_SERVICES = [
-	{ title: 'Home Assistant', icon: 'images/home-assistant.svg', service: 'ha' },
-	{ title: 'Pi-hole', icon: 'images/pi-hole.svg', service: 'pihole', path: '/admin/' },
-	{ title: 'Go Links', icon: 'images/square-up-right.svg', service: 'go' },
-	{ title: 'FreshRSS', icon: 'images/freshrss.svg', service: 'rss' },
-	{ title: 'Excalidraw', icon: 'images/excalidraw.svg', service: 'draw' },
-	{ title: 'OpenGym', icon: 'images/opengym.svg', service: 'gym' },
-];
+// Hosts and services come from services.toml via `make generate`.
+const configured = (group) => registry.services.filter((service) => service.group === group);
+
+const PRIMARY_SERVICES = configured('primary');
 
 const HEALTH_SERVICES = [
 	{ title: 'Tailscale Admin', icon: 'images/tailscale.svg', href: 'https://login.tailscale.com/admin/machines' },
-	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel' },
+	...configured('health'),
 	{ title: 'Live status', icon: 'images/bell-dot.svg', href: '/live-status', status: true },
 ];
 
 const SERVICES = [...PRIMARY_SERVICES, ...HEALTH_SERVICES];
-const STATUS_HOSTS = ['northcom', 'southcom', 'eastcom'];
+const STATUS_HOSTS = registry.hosts;
 const STATUS_SERVICES = SERVICES.filter(({ service }) => service).map(({ service }) => service);
 
 async function fetchHostStatus(host) {

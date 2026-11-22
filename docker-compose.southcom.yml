@@ -13,11 +13,8 @@ services:
       - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:443:443/udp"
     volumes:
       - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-    environment:
-      PIHOLE_UPSTREAM: "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18085"
-      STATUS_NORTHCOM_UPSTREAM: "${TAILSCALE_IP_NORTHCOM:?Set TAILSCALE_IP_NORTHCOM}:18086"
-      STATUS_SOUTHCOM_UPSTREAM: "status-agent:8080"
-      STATUS_EASTCOM_UPSTREAM: "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18086"
+    env_file:
+      - services/caddy/generated/southcom.env
 
   status-agent:
     extends:

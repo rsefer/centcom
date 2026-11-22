@@ -18,6 +18,8 @@ services:
     volumes:
       - ../../scripts/status-agent.py:/app/status-agent.py:ro
       - ../../scripts/check-services.py:/app/check-services.py:ro
+      - ../../scripts/services.py:/app/services.py:ro
+      - ../../services.toml:/app/services.toml:ro
       - status_data:/state:ro
     networks:
       - caddy_net

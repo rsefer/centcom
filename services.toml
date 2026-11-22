@@ -1,0 +1,105 @@
+# Single source of truth for centcom hosts and services.
+#
+# After editing, run `make generate` and commit the generated files. It writes:
+#   services/caddy/generated/<host>.env, single.env   Caddy upstream variables
+#   services/caddy/www/src/services.json              dashboard service list
+# The status agent and the check scripts read this file directly, and
+# `make dns-records` prints the DNS records the proxy needs.
+#
+# Tailscale addresses are not stored here: each host's IP is TAILSCALE_IP_<HOST>
+# in the private .env. Adding a service that Caddy routes also needs a site
+# block in services/caddy/Caddyfile and its Compose service; `make test`
+# fails when the Caddyfile, this file, or the generated files disagree.
+
+# Hosts in dashboard order. Each needs a docker-compose.<host>.yml.
+hosts = ["northcom", "southcom", "eastcom"]
+
+# Hosts running Caddy: DNS normally points at `primary`; `standby` is the
+# manual failover target (see README).
+[proxy]
+primary = "northcom"
+standby = "southcom"
+
+# The status agent runs on every host.
+[status]
+port = 18086               # published on each host's Tailscale IP
+container = "status-agent:8080"
+
+# Service fields:
+#   title, icon, dashboard   Dashboard card ("primary" or "health"); omit to hide.
+#   path                     URL path used by health probes (default "/").
+#   container                Address on the shared Docker network (name:port).
+#   placement                Hosts running the container, in preference order.
+#                            `port` is published on that host's Tailscale IP.
+#                            A Caddy on a listed host uses `container`; any
+#                            other Caddy uses the first placement with a port.
+#   tailnet                  Instead of container: an HTTPS machine on the tailnet.
+#   checks                   "deploy" (make check-services after deploys) and
+#                            "failover" (make check-proxy).
+#   optional                 Skipped by check-proxy unless CHECK_MCP=1.
+
+[services.ai]
+tailnet = "ai"
+checks = ["failover"]
+
+[services.ha]
+title = "Home Assistant"
+icon = "images/home-assistant.svg"
+dashboard = "primary"
+tailnet = "home-assistant"
+checks = ["failover"]
+
+[services.pihole]
+title = "Pi-hole"
+icon = "images/pi-hole.svg"
+dashboard = "primary"
+path = "/admin/"
+container = "pihole:80"
+placement = [{ host = "northcom" }, { host = "eastcom", port = 18085 }]
+checks = ["deploy", "failover"]
+
+[services.go]
+title = "Go Links"
+icon = "images/square-up-right.svg"
+dashboard = "primary"
+tailnet = "go"
+checks = ["deploy", "failover"]
+
+[services.rss]
+title = "FreshRSS"
+icon = "images/freshrss.svg"
+dashboard = "primary"
+container = "rss:80"
+placement = [{ host = "southcom", port = 18084 }]
+checks = ["deploy", "failover"]
+
+[services.draw]
+title = "Excalidraw"
+icon = "images/excalidraw.svg"
+dashboard = "primary"
+container = "excalidraw:80"
+placement = [{ host = "southcom", port = 18081 }]
+checks = ["deploy", "failover"]
+
+[services.gym]
+title = "OpenGym"
+icon = "images/opengym.svg"
+dashboard = "primary"
+container = "opengym-app:80"
+placement = [{ host = "southcom", port = 18082 }]
+checks = ["deploy", "failover"]
+
+[services.beszel]
+title = "Beszel"
+icon = "images/beszel.svg"
+dashboard = "health"
+container = "beszel:8090"
+placement = [{ host = "southcom", port = 18090 }]
+checks = ["deploy", "failover"]
+
+[services.gym-mcp]
+path = "/mcp"
+container = "opengym-mcp:8000"
+placement = [{ host = "southcom", port = 18083 }]
+checks = ["failover"]
+optional = true

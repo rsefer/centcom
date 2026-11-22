@@ -16,15 +16,6 @@ spec = importlib.util.spec_from_file_location("check_services", Path(__file__).w
 checks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checks)
 BACKUP_MARKER = Path("/state/last-backup.json")
-APPLICATIONS = {
-    "ha": "/",
-    "pihole": "/admin/",
-    "go": "/",
-    "rss": "/",
-    "draw": "/",
-    "gym": "/",
-    "beszel": "/",
-}
 
 
 def backup_status():
@@ -80,10 +71,11 @@ def application_status(service, path, domain):
 
 def applications_status():
     domain = os.environ["DOMAIN"]
-    with ThreadPoolExecutor(max_workers=len(APPLICATIONS)) as executor:
+    applications = checks.registry.applications(checks.registry.load())
+    with ThreadPoolExecutor(max_workers=len(applications)) as executor:
         futures = {
             service: executor.submit(application_status, service, path, domain)
-            for service, path in APPLICATIONS.items()
+            for service, path in applications.items()
         }
         return {"applications": {service: future.result() for service, future in futures.items()}}
 

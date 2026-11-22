@@ -146,6 +146,31 @@ docker compose build caddy && docker compose up -d --no-deps caddy
 make boot-recover
 ```
 
+## Hosts and services registry
+
+`services.toml` is the one place that lists hosts, services, where each runs,
+and its published port. Edit it, then run `make generate` and commit the result:
+
+- `services/caddy/generated/<host>.env` and `single.env` give each Caddy its
+  upstream addresses: container names for services on its own host, the
+  owning host's Tailscale IP and published port otherwise. Host Compose files
+  load their file with `env_file`; the single-host stack uses `single.env`.
+  Tailscale IPs are still read from `TAILSCALE_IP_<HOST>` in `.env`.
+- `services/caddy/www/src/services.json` drives the dashboard's service cards
+  and host list.
+- The status agent and `make check-services` read `services.toml` directly
+  (mounted into the agent container), as does `make check-proxy`.
+- `make dns-records [PROXY=primary|standby]` prints the A records the proxy
+  needs; add `BATCH=1` for a Route 53 change batch to pass to
+  `aws route53 change-resource-record-sets --change-batch file://...`.
+
+A new proxied service also needs its Compose service, published port, and a
+site block in `services/caddy/Caddyfile` (`reverse_proxy {$NAME_UPSTREAM}`, or
+`import ts_upstream <machine>` for a tailnet machine). `make test` fails when
+the generated files are stale or the Caddyfile and `services.toml` disagree.
+The Caddyfile has no upstream defaults, so a missing variable fails loudly.
+Redeploying recreates Caddy and the status agent so they load changed files.
+
 ## Dashboard
 - The landing page at `https://${DOMAIN}` is a React + [Radix Themes](https://www.radix-ui.com/themes) app in `services/caddy/www`.
 - Tailscale Admin, Beszel, and Live status appear in a separate Health section below the application links.
@@ -186,7 +211,8 @@ If northcom fails:
 1. Verify southcom and eastcom are reachable and use the direct proxy check
    above. Verify the client uses eastcom for DNS; some clients do not
    immediately try their secondary resolver.
-2. In the Route 53 hosted zone, change the dashboard A record (`<domain>`)
+2. Run `make dns-records PROXY=standby` for the records to set (`BATCH=1`
+   prints a Route 53 change batch). In the Route 53 hosted zone, change the dashboard A record (`<domain>`)
    and wildcard service A record (`*.<domain>`) from northcom's Tailscale IP
    to southcom's Tailscale IP. Also change any exact service A records that
    point to northcom: exact records take precedence over the wildcard. Leave

@@ -26,19 +26,16 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    # Upstream addresses are generated from services.toml (`make generate`);
+    # host Compose files add their own file after this single-host default.
+    env_file:
+      - ./generated/single.env
     environment:
       - DOMAIN=${DOMAIN}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - ROUTE53_HOSTED_ZONE_ID=${ROUTE53_HOSTED_ZONE_ID}
-      - BESZEL_UPSTREAM=${BESZEL_UPSTREAM:-beszel:8090}
-      - DRAW_UPSTREAM=${DRAW_UPSTREAM:-excalidraw:80}
-      - GYM_UPSTREAM=${GYM_UPSTREAM:-opengym-app:80}
-      - GYM_MCP_UPSTREAM=${GYM_MCP_UPSTREAM:-opengym-mcp:8000}
-      - RSS_UPSTREAM=${RSS_UPSTREAM:-rss:80}
-      - STATUS_SOUTHCOM_UPSTREAM=${STATUS_SOUTHCOM_UPSTREAM:-status-agent:8080}
-      - STATUS_EASTCOM_UPSTREAM=${STATUS_EASTCOM_UPSTREAM:-status-agent:8080}
     networks:
       - caddy_net
 

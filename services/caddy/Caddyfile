@@ -24,7 +24,7 @@
     reverse_proxy status-agent:8080
   }
   handle_path /status/northcom {
-    reverse_proxy {$STATUS_NORTHCOM_UPSTREAM:status-agent:8080}
+    reverse_proxy {$STATUS_NORTHCOM_UPSTREAM}
   }
   handle_path /status/southcom {
     reverse_proxy {$STATUS_SOUTHCOM_UPSTREAM}
@@ -94,7 +94,7 @@ ha.{$DOMAIN} {
 }
 pihole.{$DOMAIN} {
   import access_log
-  reverse_proxy {$PIHOLE_UPSTREAM:pihole:80}
+  reverse_proxy {$PIHOLE_UPSTREAM}
 }
 rss.{$DOMAIN} {
   import access_log

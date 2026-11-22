@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import importlib.util
 import os
 from pathlib import Path
 import secrets
@@ -11,7 +12,9 @@ import urllib.request
 
 
 ROOT = Path(__file__).resolve().parents[1]
-URL_PATHS = ("", "beszel.", "draw.", "go.", "gym.", "pihole.", "rss.")
+spec = importlib.util.spec_from_file_location("centcom_services", Path(__file__).with_name("services.py"))
+registry = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(registry)
 
 
 def settings():
@@ -118,8 +121,8 @@ def main():
     if len(set(resolved_proxies)) > 1:
         print("DNS resolvers disagree on the active proxy", file=sys.stderr)
         failed = True
-    for prefix in URL_PATHS:
-        url = f"https://{prefix}{domain}" + ("/admin/" if prefix == "pihole." else "/")
+    for name, path, _ in registry.checks(registry.load(), "deploy"):
+        url = f"https://{domain if name == 'dashboard' else f'{name}.{domain}'}{path}"
         try:
             status = check_url(url)
             print(f"{url}: HTTP {status}")

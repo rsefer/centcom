@@ -9,14 +9,8 @@ services:
       context: ./services/caddy
     volumes:
       - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-    environment:
-      BESZEL_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18090"
-      DRAW_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18081"
-      GYM_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18082"
-      GYM_MCP_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083"
-      RSS_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18084"
-      STATUS_SOUTHCOM_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18086"
-      STATUS_EASTCOM_UPSTREAM: "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18086"
+    env_file:
+      - services/caddy/generated/northcom.env
 
   status-agent:
     extends:
