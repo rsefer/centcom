@@ -340,13 +340,14 @@ export default function App() {
 						</>
 					) : (
 						<>
+							<Heading as="h2" size="1" color="gray" mb="3" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Apps</Heading>
 							<Grid className="service-grid" columns={{ initial: '1', sm: '2' }} gap="3">
 								{PRIMARY_SERVICES.map((item) => (
 									<ServiceCard key={item.title} item={item} />
 								))}
 							</Grid>
 							<Separator size="4" my="5" style={{ width: '100%' }} />
-							<Heading as="h2" size="1" color="gray" mb="3" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Health</Heading>
+							<Heading as="h2" size="1" color="gray" mb="3" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>System</Heading>
 							<Grid className="service-grid" columns={{ initial: '1', sm: '2' }} gap="3">
 								{HEALTH_SERVICES.map((item) => (
 									<ServiceCard key={item.title} item={item} summary={summary} />
