@@ -1,8 +1,9 @@
 # Single source of truth for centcom hosts and services.
 #
-# After editing, run `make generate` and commit the generated files. It writes:
-#   services/caddy/generated/<host>.env, single.env   Caddy upstream variables
-#   services/caddy/www/src/services.json              dashboard service list
+# After editing, run `make generate` and commit the generated env files. It writes:
+#   services/caddy/generated/<host>.env, single.env   Caddy upstream variables (committed)
+#   services/caddy/www/src/services.json              dashboard service list (gitignored;
+#                                                     builds and `make reload` regenerate it)
 # The status agent and the check scripts read this file directly, and
 # `make dns-records` prints the DNS records the proxy needs.
 #

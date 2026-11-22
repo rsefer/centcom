@@ -35,10 +35,10 @@ check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROX
 test: ## Run the Python test suite
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 
-dashboard-test: ## Run dashboard unit tests
+dashboard-test: generate ## Run dashboard unit tests
 	node --test services/caddy/www/src/*.test.js
 
-dashboard-build: ## Build the dashboard with installed npm dependencies
+dashboard-build: generate ## Build the dashboard with installed npm dependencies
 	npm --prefix services/caddy/www run build
 
 boot-recover: ## Run the boot recovery routine manually (run on the Pi)

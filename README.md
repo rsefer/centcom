@@ -150,7 +150,8 @@ make boot-recover
 ## Hosts and services registry
 
 `services.toml` is the one place that lists hosts, services, where each runs,
-and its published port. Edit it, then run `make generate` and commit the result:
+and its published port. Edit it, run `make generate`, and commit the generated
+env files:
 
 - `services/caddy/generated/<host>.env` and `single.env` give each Caddy its
   upstream addresses: container names for services on its own host, the
@@ -158,7 +159,9 @@ and its published port. Edit it, then run `make generate` and commit the result:
   load their file with `env_file`; the single-host stack uses `single.env`.
   Tailscale IPs are still read from `TAILSCALE_IP_<HOST>` in `.env`.
 - `services/caddy/www/src/services.json` drives the dashboard's service cards
-  and host list.
+  and host list. It is gitignored: `make generate`, `make dashboard-build`,
+  `make dashboard-test`, and `make reload` all write it, because the Caddy image
+  builds the dashboard and needs it present.
 - The status agent and `make check-services` read `services.toml` directly
   (mounted into the agent container), as does `make check-proxy`.
 - `make dns-records [PROXY=primary|standby]` prints the A records the proxy

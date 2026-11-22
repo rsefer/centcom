@@ -141,7 +141,7 @@ class RepositoryTests(unittest.TestCase):
                                         capture_output=True, text=True).returncode, 0)
 
     def test_dashboard_data_covers_status_probes(self):
-        data = json.loads((ROOT / "services/caddy/www/src/services.json").read_text())
+        data = json.loads(registry.dashboard_json(self.config))
         self.assertEqual({s["service"] for s in data["services"]},
                          set(registry.applications(self.config)))
         self.assertEqual(data["hosts"], self.config["hosts"])
