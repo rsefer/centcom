@@ -1,12 +1,15 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
 setup: ## Install Docker and cron jobs on the host (run on the Pi)
 	./scripts/setup.sh
+
+harden: ## Enable NTP, hardware watchdog and log2ram (run on the Pi, then reboot)
+	./scripts/harden-host.sh
 
 setup-cron: ## Install or verify the cron jobs
 	./scripts/setup-cron.sh
