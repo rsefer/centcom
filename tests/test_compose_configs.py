@@ -19,7 +19,10 @@ class ComposeConfigTests(unittest.TestCase):
 
     def config(self, host):
         env = dict(os.environ, TAILSCALE_IP_NORTHCOM="100.73.192.117",
-                   TAILSCALE_IP_SOUTHCOM="100.97.91.90", DOMAIN="example.com")
+                   TAILSCALE_IP_SOUTHCOM="100.97.91.90",
+                   TAILSCALE_IP_EASTCOM="100.127.122.57",
+                   PIHOLE_NORTHCOM_PASSWORD="primary-test",
+                   PIHOLE_EASTCOM_PASSWORD="replica-test", DOMAIN="example.com")
         result = subprocess.run(
             ["docker", "compose", "--env-file", ".env.sample",
              "-f", f"docker-compose.{host}.yml", "--profile", "opengym-mcp",
@@ -30,7 +33,8 @@ class ComposeConfigTests(unittest.TestCase):
 
     def test_northcom_reuses_caddy_with_correct_paths_and_upstreams(self):
         config = self.config("northcom")
-        self.assertEqual(set(config["services"]), {"caddy", "pihole", "beszel-agent"})
+        self.assertEqual(set(config["services"]),
+                         {"caddy", "pihole", "pihole-sync", "beszel-agent"})
         caddy = config["services"]["caddy"]
         self.assertEqual(caddy["build"]["context"], str(ROOT / "services/caddy"))
         self.assertEqual(caddy["environment"]["RSS_UPSTREAM"], "100.97.91.90:18084")
@@ -43,6 +47,20 @@ class ComposeConfigTests(unittest.TestCase):
         self.assertEqual(agent["environment"]["LISTEN"], "100.73.192.117:45876")
         self.assertEqual(agent["environment"]["HUB_URL"], "")
         self.assertEqual(agent["environment"]["TOKEN"], "")
+
+    def test_eastcom_uses_only_its_own_tailscale_ip(self):
+        config = self.config("eastcom")
+        self.assertEqual(set(config["services"]), {"pihole", "beszel-agent"})
+        pihole = config["services"]["pihole"]
+        self.assertEqual(
+            {(p["host_ip"], p["published"], p["target"], p["protocol"])
+             for p in pihole["ports"]},
+            {("100.127.122.57", "53", 53, "tcp"),
+             ("100.127.122.57", "53", 53, "udp"),
+             ("100.127.122.57", "18085", 80, "tcp")},
+        )
+        self.assertEqual(config["services"]["beszel-agent"]["environment"]["LISTEN"],
+                         "100.127.122.57:45876")
 
     def test_southcom_reuses_service_paths_and_binds_to_tailnet(self):
         config = self.config("southcom")

@@ -1,0 +1,32 @@
+name: centcom
+
+services:
+  pihole:
+    extends:
+      file: services/pihole/compose.yaml
+      service: pihole
+    environment:
+      FTLCONF_webserver_api_password: "${PIHOLE_EASTCOM_PASSWORD:?Set PIHOLE_EASTCOM_PASSWORD}"
+    ports: !override
+      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:53:53/tcp"
+      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:53:53/udp"
+      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18085:80/tcp"
+
+  beszel-agent:
+    extends:
+      file: services/beszel/compose.yaml
+      service: beszel-agent
+    environment:
+      LISTEN: "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:45876"
+      HUB_URL: ""
+      TOKEN: ""
+
+volumes:
+  pihole_data:
+  pihole_dnsmasq:
+  beszel_agent_data:
+  beszel_socket:
+
+networks:
+  caddy_net:
+    external: true

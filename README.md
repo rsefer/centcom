@@ -10,7 +10,8 @@ e.g. `make deploy`, `make reload`, or `make setup`.
 
 Each application is organized under `services/` with its own `compose.yaml`.
 The root `docker-compose.yml` includes those files so the existing `docker compose`
-commands continue to manage the full stack. This uses Docker Compose v2.20+.
+commands continue to manage the full stack. This uses Docker Compose v2.20+;
+eastcom's host configuration requires v2.24.4+.
 To operate on one application directly, run
 `docker compose --env-file .env -p centcom -f services/<app>/compose.yaml up -d`;
 keep the project name `centcom` so named volumes are shared with the full stack.
@@ -24,22 +25,35 @@ Each host file extends the shared service definitions under `services/`.
 
 | Host | Symlink target | Services |
 | --- | --- | --- |
-| northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Beszel agent |
+| northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Pi-hole sync, Beszel agent |
 | southcom | `docker-compose.southcom.yml` | Beszel, Excalidraw, FreshRSS, GoLink, openGym |
+| eastcom | `docker-compose.eastcom.yml` | Secondary Pi-hole, Beszel agent |
 
 For example, on northcom run `ln -s docker-compose.northcom.yml compose.yaml`
-from the repository root; use the southcom target on southcom. Leave
-`COMPOSE_FILE` unset. Set `TAILSCALE_IP_NORTHCOM` and `TAILSCALE_IP_SOUTHCOM`
-to the respective hosts' Tailscale IPv4 addresses in the shared `.env`.
+from the repository root; use each host's matching target on the other hosts.
+Leave `COMPOSE_FILE` unset. Set `TAILSCALE_IP_NORTHCOM`,
+`TAILSCALE_IP_SOUTHCOM`, and `TAILSCALE_IP_EASTCOM` to the respective hosts'
+Tailscale IPv4 addresses in the shared `.env`.
 The northcom Compose configuration derives the app upstreams from southcom's
 address. These app ports are reachable directly
 by devices allowed to connect to southcom over Tailscale, bypassing Caddy.
-Pi-hole DNS remains bound only to northcom's Tailscale IP. Point the existing
+Pi-hole DNS is bound to the corresponding host's Tailscale IP. Point the existing
 service DNS records at northcom after verifying the split.
+
+Northcom's `pihole-sync` uses Nebula Sync to copy DNS settings, groups, clients,
+adlists and allow/deny lists to eastcom hourly; changes made on eastcom may be
+overwritten. Its administrator API is exposed only on eastcom's Tailscale IP,
+port 18085. Set `PIHOLE_NORTHCOM_PASSWORD` to a primary Pi-hole administrator
+or application password and `PIHOLE_EASTCOM_PASSWORD` to the secondary's administrator
+password in the shared `.env`; keep this file private. The secondary updates
+gravity after each synchronization. Both resolvers must be configured on clients
+before DNS redundancy is effective; merely running a second Pi-hole does not
+change client DNS settings. Test both resolvers and recovery before changing
+tailnet-wide DNS.
 
 With a `compose.yaml` symlink, backups append the host's short hostname to
 the shared `BACKUP_S3_PREFIX` (default `centcom`), producing paths such as
-`centcom/northcom` and `centcom/southcom`. Each host backs up only services in
+`centcom/northcom`, `centcom/southcom`, and `centcom/eastcom`. Each host backs up only services in
 its Compose selection. The existing S3 policy must allow both prefixes. Install cron only after the
 host's `.env` is configured, using `make setup-cron`. Future hosts can use
 additional Compose selections and hostnames.
@@ -128,9 +142,9 @@ make boot-recover
 
 
 ## Host monitoring (Beszel)
-- The Beszel hub is available at `https://beszel.vpn.rsefer.com`; its data is stored in the `beszel_data` volume. In the split deployment, the hub and its local agent run on southcom, and northcom runs a separate agent.
-- Agents use host networking and the read-only Docker socket for host and container metrics. The southcom agent connects over a shared Unix socket. The northcom agent listens for authenticated SSH on its Tailscale IP, port 45876, using the hub's public key; it does not use a WebSocket token.
-- Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the shared `.env` using the values provided by the hub for its local agent. In the hub, add or rename the local system to `southcom` with Host / IP `/beszel_socket/beszel.sock`. Add a `northcom` system with its Tailscale IP and port `45876`. For additional hosts, run an agent on each and add a separate system.
+- The Beszel hub is available at `https://beszel.vpn.rsefer.com`; its data is stored in the `beszel_data` volume. In the split deployment, the hub and its local agent run on southcom, and northcom and eastcom run separate agents.
+- Agents use host networking and the read-only Docker socket for host and container metrics. The southcom agent connects over a shared Unix socket. The northcom and eastcom agents listen for authenticated SSH on their Tailscale IPs, port 45876, using the hub's public key; they do not use WebSocket tokens.
+- Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the shared `.env` using the values provided by the hub for its local agent. In the hub, add or rename the local system to `southcom` with Host / IP `/beszel_socket/beszel.sock`. Add `northcom` and `eastcom` systems with their respective Tailscale IPs and port `45876`. For additional hosts, run an agent on each and add a separate system.
 
 ## Excalidraw
 - Excalidraw is available at `https://draw.vpn.rsefer.com` through Caddy.
@@ -182,7 +196,7 @@ make boot-recover
 - The Dockerfile pins the upstream source revision and gateway version. Updating the API does not automatically update the MCP source; update its pin and rebuild after checking upstream compatibility.
 
 # Tailscale config
-- Custom Tailscale nameservers should *not* be used - it causes a troubleshooting doomloop and is not worth the time
+- Custom Tailscale nameservers can cause a troubleshooting loop if DNS is unavailable. Before enabling them, verify both Pi-hole resolvers and retain a way to restore DNS or connect by IP.
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:
 	- Record name: `*.vpn` when the hosted zone is `rsefer.com`, or `*` when the hosted zone is `vpn.rsefer.com`.
 	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4`.

@@ -49,7 +49,7 @@ services="$(docker compose config --services)"
 if printf '%s\n' "$services" | grep -Fxq caddy; then
 	docker compose up -d --no-deps --force-recreate caddy
 fi
-for service in caddy rss; do
+for service in caddy rss pihole; do
 	if printf '%s\n' "$services" | grep -Fxq "$service"; then
 		wait_for_service "$service" 90
 	fi
