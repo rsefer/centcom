@@ -13,6 +13,10 @@
 # Stop the service that owns the data first, e.g.:
 #   docker compose stop opengym-api   (for opengym_data)
 #   docker compose stop pihole        (for pihole_data / pihole_dnsmasq)
+#
+# pihole_data: after restoring, start pihole and run
+#   docker compose exec pihole sh -c 'cp /etc/pihole/gravity-config.db /etc/pihole/gravity.db && chown pihole:pihole /etc/pihole/gravity.db && pihole -g'
+# to restore adlists, rules, groups and clients and rebuild the blocklist.
 
 set -eu
 

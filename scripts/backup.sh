@@ -115,14 +115,33 @@ restart_services
 fi
 
 # Remaining named volumes (live archives; their sqlite data is low-write).
-# Pi-hole: query history (pihole-FTL.db) and the compiled blocklist
-# (gravity.db, rebuilt by `pihole -g`) are excluded. Config is covered by
-# pihole.toml plus Pi-hole's own rolling config_backups/ and gravity_backups/
-# (config-only gravity snapshots), which are included.
+# Pi-hole: query history (pihole-FTL.db) and the compiled blocklist are
+# excluded. gravity.db also holds adlists, allow/deny rules, groups and clients
+# (not rebuildable), so a consistent config-only copy (gravity-config.db: live
+# DB via sqlite .backup with the gravity/antigravity tables emptied) is made
+# first and archived alongside pihole.toml and Pi-hole's config_backups/.
+# gravity_backups/ is excluded: it rotates hourly and fills with whatever state
+# gravity last ran against.
 if has_service pihole; then
+pihole_cfg=/etc/pihole/gravity-config.db
+if docker compose exec -T pihole sh -c "rm -f $pihole_cfg && pihole-FTL sqlite3 /etc/pihole/gravity.db \".backup $pihole_cfg\" && pihole-FTL sqlite3 $pihole_cfg 'delete from gravity; delete from antigravity; vacuum;'"; then
+	adlists="$(docker compose exec -T pihole pihole-FTL sqlite3 -readonly $pihole_cfg 'select count(*) from adlist;' | tr -d '\r')"
+	count_file="$BACKUP_ROOT/.pihole-adlist-count"
+	previous="$(cat "$count_file" 2>/dev/null || echo 0)"
+	echo "Pi-hole adlists: $adlists (previous backup: $previous)"
+	if [ "${adlists:-0}" -lt "$previous" ]; then
+		echo "✗ Pi-hole adlist count dropped from $previous to $adlists" >&2
+		failures="$failures pihole_adlists"
+	fi
+	echo "$adlists" >"$count_file"
+else
+	echo "✗ Failed to create Pi-hole gravity-config.db" >&2
+	failures="$failures pihole_gravity_config"
+fi
 archive_mount pihole_data centcom_pihole_data \
 	--exclude './gravity.db' \
 	--exclude './gravity_old.db' \
+	--exclude './gravity_backups' \
 	--exclude './pihole-FTL.db' \
 	--exclude './pihole-FTL.db-wal' \
 	--exclude './pihole-FTL.db-shm' \
