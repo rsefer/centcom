@@ -69,7 +69,7 @@ if [ "$BOOTSTRAP_ONLY" = true ]; then
     curl -fsSL https://tailscale.com/install.sh -o "$installer"
     sudo sh "$installer"
   fi
-  echo "Bootstrap complete. Run 'sudo tailscale up' to authenticate, then reconnect so Docker group membership takes effect."
+  echo "Bootstrap complete. Run 'sudo tailscale up --advertise-tags=tag:centcom --advertise-exit-node' to authenticate, then reconnect so Docker group membership takes effect."
   exit 0
 fi
 

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -25,6 +25,15 @@ check-hosts: ## Report drift between hosts (read-only): make check-hosts [HOST=h
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py
+
+policy-diff: ## Show how the live Tailscale policy differs from tailscale/policy.hujson (read-only)
+	python3 scripts/tailscale-policy.py diff
+
+policy-check: ## Validate tailscale/policy.hujson and run its tests server-side (read-only)
+	python3 scripts/tailscale-policy.py validate
+
+policy-apply: ## Replace the live Tailscale policy with tailscale/policy.hujson (shows diff, asks first)
+	python3 scripts/tailscale-policy.py apply
 
 generate: ## Regenerate Caddy upstreams and dashboard services from services.toml
 	python3 scripts/services.py generate

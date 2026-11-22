@@ -119,6 +119,45 @@ then run `sudo tailscale up`, authenticate in the browser, and reconnect to
 pick up Docker group membership. Service placement and backup restoration
 must be configured separately before starting the stack.
 
+### Tailscale policy
+
+`tailscale/policy.hujson` tags the Pis `tag:centcom`, allows only the ports the
+stack uses, and auto-approves their subnet route and exit node. Tagged devices
+have key expiry disabled, so tagging is also how the servers stop expiring.
+
+- Clients (members and tagged devices): DNS 53, Caddy 80/443. Admins only: SSH 22
+  and the direct app, status and Beszel ports. Pis reach each other only on the
+  upstream, status and Beszel-agent ports.
+- It does not know about other tagged devices (Apple TVs, Home Assistant, ...).
+  Merge it into the existing policy rather than replacing it, and keep the `tests`.
+
+Policy updates go through the Tailscale API from your workstation (not the Pis).
+Create an OAuth client with only the `policy_file` scope (admin console, Settings >
+OAuth clients), put `TS_OAUTH_CLIENT_ID` and
+`TS_OAUTH_CLIENT_SECRET` in `.env`, then:
+
+- `make policy-diff` shows the live policy against the file (read-only).
+- `make policy-check` runs Tailscale's validation and the `tests` block (read-only).
+- `make policy-apply` validates, shows the diff, asks, then replaces the live policy.
+  It sends the ETag it diffed, so a concurrent console edit makes the write fail.
+
+`policy-apply` replaces the whole policy. On the first run, read `make policy-diff`
+and merge anything you want to keep into the file.
+
+Rollout, in this order (a node can only take a tag the policy lets you own):
+
+1. Merge the policy in the admin console, keeping the existing allow-all grant for now.
+2. On each Pi, run `sh scripts/configure-routing.sh 192.168.4.0/22`. This runs
+   `tailscale set --advertise-tags=tag:centcom ...`; no re-authentication is needed.
+3. Confirm each Pi shows the tag and "Expiry disabled" in the admin console, and
+   `make check-hosts` and `make check-services` still pass.
+4. Remove the allow-all grant, then re-check DNS and a service URL from a phone.
+
+For a fresh Pi, authenticate with
+`sudo tailscale up --advertise-tags=tag:centcom --advertise-exit-node`, then run
+`scripts/configure-routing.sh` for forwarding and the subnet route. Every Pi is an
+exit node; clients pick one in their Tailscale app.
+
 ### Host hardening
 
 `make harden` (run on each Pi as the login user, then reboot) is idempotent and

@@ -1,0 +1,164 @@
+// Tailnet policy for the centcom Pis (northcom, southcom, eastcom).
+// Applied with `make policy-apply`. This file is the whole tailnet policy, so
+// it also carries the pre-existing entries for other devices.
+//
+// STAGE 1 (current): the original allow-all `acls` rule is kept, so nothing
+// outside the Pis changes. The centcom grants are additive and the deny tests
+// are commented out (allow-all would fail them).
+// STAGE 2 (after the Pis are retagged tag:centcom): delete the allow-all rule,
+// uncomment the deny tests, run `make policy-check`, then apply. Anything not
+// granted below is then blocked, including tagged devices' access to
+// non-centcom nodes, so add grants for those first.
+//
+// Port inventory (all bound to each host's Tailscale IP):
+//   53 tcp/udp   Pi-hole DNS (northcom, eastcom)
+//   80, 443      Caddy (northcom primary, southcom standby); 443/udp is HTTP/3
+//   22           sshd
+//   18081-18084  southcom apps, read directly by the other Caddy
+//   18085        eastcom Pi-hole admin API (Caddy, Nebula Sync)
+//   18086        status agent on every host
+//   18090        Beszel hub (southcom)
+//   45876        Beszel agent (hub -> northcom, eastcom)
+{
+	"tagOwners": {
+		"tag:centcom":          ["autogroup:admin"],
+		"tag:personal-device":  ["autogroup:admin"],
+		"tag:at-home":          ["autogroup:admin"],
+		"tag:server":           ["autogroup:admin"],
+		"tag:docktail-host":    ["autogroup:admin"],
+		"tag:docktail-service": ["tag:docktail-host"],
+	},
+
+	// STAGE 2: delete this rule.
+	"acls": [
+		{
+			"action": "accept",
+			"src":    ["*"],
+			"dst":    ["*:*"],
+		},
+	],
+
+	"hosts": {
+		"centcom-lan":    "192.168.4.0/22",
+		"ai":             "100.71.204.28",
+		"go":             "100.86.115.92",
+		"home-assistant": "100.74.240.105",
+	},
+
+	"grants": [
+		// Pre-existing: tsidp capability for the whole tailnet (no network access by itself).
+		{
+			"src": ["*"],
+			"dst": ["*"],
+			"app": {
+				"tailscale.com/cap/tsidp": [
+					{
+						"allow_admin_ui":    true,
+						"allow_dcr":         true,
+						"users":             ["*"],
+						"resources":         ["*"],
+						"extraClaims":       {},
+						"includeInUserInfo": true,
+					},
+				],
+			},
+		},
+		// Clients -> DNS. Includes tagged devices (Apple TVs, tagged phones),
+		// which resolve through Pi-hole when tailnet DNS points at it.
+		{
+			"src": ["autogroup:member", "autogroup:tagged"],
+			"dst": ["tag:centcom"],
+			"ip":  ["tcp:53", "udp:53"],
+		},
+		// Clients -> Caddy (service hostnames).
+		{
+			"src": ["autogroup:member", "autogroup:tagged"],
+			"dst": ["tag:centcom"],
+			"ip":  ["tcp:80", "tcp:443", "udp:443"],
+		},
+		// Admin only: SSH, plus the app, status and Beszel ports that bypass Caddy.
+		{
+			"src": ["autogroup:admin"],
+			"dst": ["tag:centcom"],
+			"ip":  ["tcp:22", "tcp:18081-18086", "tcp:18090"],
+		},
+		// Pi <-> Pi: Caddy upstreams, status agents, Nebula Sync, Beszel hub.
+		{
+			"src": ["tag:centcom"],
+			"dst": ["tag:centcom"],
+			"ip":  ["tcp:18081-18086", "tcp:18090", "tcp:45876"],
+		},
+		// Caddy -> tailnet HTTPS machines it proxies.
+		{
+			"src": ["tag:centcom"],
+			"dst": ["ai", "go", "home-assistant"],
+			"ip":  ["tcp:443"],
+		},
+		// Members -> those machines directly.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["ai", "go", "home-assistant"],
+			"ip":  ["tcp:443"],
+		},
+		// Subnet routers and exit nodes.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["centcom-lan", "autogroup:internet"],
+			"ip":  ["*"],
+		},
+	],
+
+	"autoApprovers": {
+		"routes": {
+			"192.168.4.0/22": ["tag:centcom"],
+		},
+		"exitNode": ["tag:centcom"],
+		"services": {
+			"tag:docktail-service": ["tag:docktail-host"],
+		},
+	},
+
+	// Pre-existing: Tailscale SSH to your own devices (check mode).
+	"ssh": [
+		{
+			"action": "check",
+			"src":    ["autogroup:member"],
+			"dst":    ["autogroup:self"],
+			"users":  ["autogroup:nonroot", "root"],
+		},
+	],
+
+	// Pre-existing: Funnel for members and the app-connectors attribute.
+	"nodeAttrs": [
+		{
+			"target": ["autogroup:member"],
+			"attr":   ["funnel"],
+		},
+		{"target": ["*"], "app": {"tailscale.com/app-connectors": []}},
+	],
+
+	// Evaluated on save; a failing test rejects the policy.
+	"tests": [
+		{
+			// Rob's MacBook (admin)
+			"src":    "100.82.246.100",
+			"accept": ["tag:centcom:22", "tag:centcom:53", "tag:centcom:443", "tag:centcom:18081", "ai:443"],
+			// STAGE 2: uncomment.
+			// "deny":   ["tag:centcom:3306", "tag:centcom:45876"],
+		},
+		{
+			// Kathryn's MacBook Air (member, not admin)
+			"src":    "100.64.225.122",
+			"accept": ["tag:centcom:53", "tag:centcom:443"],
+			// STAGE 2: uncomment.
+			// "deny":   ["tag:centcom:22", "tag:centcom:18081", "tag:centcom:18090"],
+		},
+		{
+			"src":    "tag:centcom",
+			// 53 is allowed because autogroup:tagged (DNS grant) includes the Pis.
+			"accept": ["tag:centcom:53", "tag:centcom:18081", "tag:centcom:18085", "tag:centcom:45876", "ai:443"],
+			// STAGE 2: uncomment.
+			// "deny":   ["tag:centcom:22", "tag:centcom:3306", "ai:22"],
+		},
+	],
+}
