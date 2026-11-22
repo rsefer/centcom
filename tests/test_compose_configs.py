@@ -29,7 +29,13 @@ class ComposeConfigTests(unittest.TestCase):
              "config", "--format", "json"],
             cwd=ROOT, env=env, capture_output=True, text=True, check=True,
         )
-        return json.loads(result.stdout)
+        config = json.loads(result.stdout)
+        for service in config["services"].values():
+            self.assertEqual(service["logging"], {
+                "driver": "json-file",
+                "options": {"max-size": "10m", "max-file": "3"},
+            })
+        return config
 
     def test_northcom_reuses_caddy_with_correct_paths_and_upstreams(self):
         config = self.config("northcom")

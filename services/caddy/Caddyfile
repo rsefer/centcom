@@ -8,8 +8,18 @@
   }
 }
 
+(access_log) {
+  log {
+    output file /var/log/caddy/access.log {
+      roll_size 10MiB
+      roll_keep 3
+    }
+  }
+}
+
 # Dashboard static server
 {$DOMAIN}, http:// {
+  import access_log
   handle /status/applications {
     reverse_proxy status-agent:8080
   }
@@ -49,21 +59,27 @@
 
 # Subdomains
 ai.{$DOMAIN} {
+  import access_log
   import ts_upstream ai
 }
 beszel.{$DOMAIN} {
+  import access_log
   reverse_proxy {$BESZEL_UPSTREAM}
 }
 draw.{$DOMAIN} {
+  import access_log
   reverse_proxy {$DRAW_UPSTREAM}
 }
 go.{$DOMAIN} {
+  import access_log
   import ts_upstream go
 }
 gym.{$DOMAIN} {
+  import access_log
   reverse_proxy {$GYM_UPSTREAM}
 }
 gym-mcp.{$DOMAIN} {
+  import access_log
   handle /mcp {
     reverse_proxy {$GYM_MCP_UPSTREAM}
   }
@@ -72,11 +88,14 @@ gym-mcp.{$DOMAIN} {
   }
 }
 ha.{$DOMAIN} {
+  import access_log
   import ts_upstream home-assistant
 }
 pihole.{$DOMAIN} {
+  import access_log
   reverse_proxy {$PIHOLE_UPSTREAM:pihole:80}
 }
 rss.{$DOMAIN} {
+  import access_log
   reverse_proxy {$RSS_UPSTREAM}
 }

@@ -2,6 +2,11 @@ services:
   beszel:
     image: henrygd/beszel:latest
     container_name: beszel
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - APP_URL=https://beszel.${DOMAIN}
     ports:
@@ -22,6 +27,11 @@ services:
   beszel-agent:
     image: henrygd/beszel-agent:latest
     container_name: beszel-agent
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     network_mode: host
     environment:
       - LISTEN=/beszel_socket/beszel.sock
