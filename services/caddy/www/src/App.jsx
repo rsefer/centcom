@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { backupStatus } from './backup-status.js';
+import { statusSummary } from './status-summary.js';
+import './service-grid.css';
 import {
 	Box,
 	Badge,
@@ -11,24 +13,31 @@ import {
 	Heading,
 	Kbd,
 	Link,
+	Separator,
 	Text,
 	TextField,
 	Theme,
 	VisuallyHidden,
 } from '@radix-ui/themes';
 
-const SERVICES = [
+const PRIMARY_SERVICES = [
 	{ title: 'Home Assistant', icon: 'images/home-assistant.svg', service: 'ha' },
 	{ title: 'Pi-hole', icon: 'images/pi-hole.svg', service: 'pihole', path: '/admin/' },
 	{ title: 'Go Links', icon: 'images/square-up-right.svg', service: 'go' },
 	{ title: 'FreshRSS', icon: 'images/freshrss.svg', service: 'rss' },
 	{ title: 'Excalidraw', icon: 'images/excalidraw.svg', service: 'draw' },
 	{ title: 'OpenGym', icon: 'images/opengym.svg', service: 'gym' },
-	{ title: 'Tailscale Admin', icon: 'images/tailscale.svg', href: 'https://login.tailscale.com/admin/machines' },
-	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel' },
 ];
 
+const HEALTH_SERVICES = [
+	{ title: 'Tailscale Admin', icon: 'images/tailscale.svg', href: 'https://login.tailscale.com/admin/machines' },
+	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel' },
+	{ title: 'Live status', icon: 'images/bell-dot.svg', href: '/live-status', status: true },
+];
+
+const SERVICES = [...PRIMARY_SERVICES, ...HEALTH_SERVICES];
 const STATUS_HOSTS = ['northcom', 'southcom', 'eastcom'];
+const STATUS_SERVICES = SERVICES.filter(({ service }) => service).map(({ service }) => service);
 
 async function fetchHostStatus(host) {
 	const controller = new AbortController();
@@ -145,9 +154,7 @@ function StatusCard({ host, data, error }) {
 	);
 }
 
-function OperationalStatus() {
-	const status = useHostStatus();
-	const applicationStatus = useApplicationStatus();
+function OperationalStatus({ status, applicationStatus }) {
 	return (
 		<Box mt="7">
 			<Flex justify="between" align="center" wrap="wrap" gap="2" mb="3">
@@ -216,13 +223,16 @@ function ServiceIcon({ icon, title }) {
 	return <img src={icon} alt="" width="24" height="24" style={{ display: 'block' }} />;
 }
 
-function ServiceCard({ item }) {
+function ServiceCard({ item, summary }) {
 	return (
 		<Card asChild size="2">
 			<a href={serviceHref(item)} style={{ textDecoration: 'none' }}>
 				<Flex align="center" gap="3">
 					<ServiceIcon icon={item.icon} title={item.title} />
-					<Text size="3" weight="medium">{item.title}</Text>
+					<Flex direction="column" gap="1">
+						<Text size="3" weight="medium">{item.title}</Text>
+						{item.status && <Text size="2" color="gray">{summary}</Text>}
+					</Flex>
 				</Flex>
 			</a>
 		</Card>
@@ -297,6 +307,10 @@ function CommandPalette({ open, onOpenChange }) {
 export default function App() {
 	const prefersDark = usePrefersDark();
 	const [paletteOpen, setPaletteOpen] = useState(false);
+	const isStatusPage = window.location.pathname === '/live-status';
+	const status = useHostStatus();
+	const applicationStatus = useApplicationStatus();
+	const summary = statusSummary(status, applicationStatus, STATUS_SERVICES);
 
 	useEffect(() => {
 		function handleKeyDown(event) {
@@ -319,12 +333,27 @@ export default function App() {
 			<Box minHeight="100dvh" py="7" px="4" style={{ background: 'var(--gray-2)' }}>
 				<Container size="3">
 					<Heading as="h1" size="8" align="center" mb="6">CENTCOM</Heading>
-					<Grid columns={{ initial: '1', sm: '2' }} gap="3">
-						{SERVICES.map((item) => (
-							<ServiceCard key={item.title} item={item} />
-						))}
-					</Grid>
-					<OperationalStatus />
+					{isStatusPage ? (
+						<>
+							<Link href="/" size="2">Back to services</Link>
+							<OperationalStatus status={status} applicationStatus={applicationStatus} />
+						</>
+					) : (
+						<>
+							<Grid className="service-grid" columns={{ initial: '1', sm: '2' }} gap="3">
+								{PRIMARY_SERVICES.map((item) => (
+									<ServiceCard key={item.title} item={item} />
+								))}
+							</Grid>
+							<Separator size="4" my="5" style={{ width: '100%' }} />
+							<Heading as="h2" size="1" color="gray" mb="3" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Health</Heading>
+							<Grid className="service-grid" columns={{ initial: '1', sm: '2' }} gap="3">
+								{HEALTH_SERVICES.map((item) => (
+									<ServiceCard key={item.title} item={item} summary={summary} />
+								))}
+							</Grid>
+						</>
+					)}
 					<Flex justify="center" mt="6">
 						<Text size="2" color="gray">
 							Press <Kbd>⌘K</Kbd> to search services
