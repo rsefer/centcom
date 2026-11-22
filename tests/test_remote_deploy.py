@@ -27,6 +27,12 @@ class RemoteDeployTests(unittest.TestCase):
             script.write_text('#!/bin/sh\nprintf "%s %s\\n" "$TEST_HOST" "' + name +
                               '" >> "$TEST_LOG"\n')
             script.chmod(0o755)
+        (self.work / "scripts" / "check-services.py").write_text(
+            "import os\n"
+            "with open(os.environ['TEST_LOG'], 'a') as log:\n"
+            "    log.write(os.environ['TEST_HOST'] + ' check-services.py\\n')\n"
+            "raise SystemExit(int(os.environ.get('CHECK_FAIL', '0')))\n"
+        )
         for host in ("northcom", "southcom"):
             (self.work / f"docker-compose.{host}.yml").write_text("services: {}\n")
         (self.work / ".gitignore").write_text("compose.yaml\n")
@@ -89,6 +95,7 @@ class RemoteDeployTests(unittest.TestCase):
             "connect northcom", "connect southcom",
             "connect northcom", "northcom setup-cron.sh", "northcom reload.sh",
             "connect southcom", "southcom setup-cron.sh", "southcom reload.sh",
+            "connect southcom", "southcom check-services.py",
         ])
         for host in ("northcom", "southcom"):
             actual = subprocess.check_output(
@@ -96,6 +103,11 @@ class RemoteDeployTests(unittest.TestCase):
                 cwd=self.homes / host / "centcom", text=True,
             ).strip()
             self.assertEqual(actual, expected)
+
+    def test_failed_service_check_fails_deployment(self):
+        result = self.deploy(CHECK_FAIL="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("southcom check-services.py", self.log.read_text())
 
     def test_dirty_host_prevents_all_deployments(self):
         (self.homes / "southcom" / "centcom" / "unexpected.txt").write_text("local")

@@ -107,3 +107,10 @@ for host in $HOSTS; do
 	./scripts/reload.sh
 REMOTE
 done
+
+echo "Checking DNS and service URLs from $host"
+connect "$host" sh -s <<'REMOTE'
+	set -eu
+	cd ~/centcom
+	python3 scripts/check-services.py
+REMOTE

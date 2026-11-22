@@ -70,6 +70,12 @@ cause deployment to stop. If a host fails during deployment after preflight,
 earlier hosts may already be updated; fix the problem and run it again.
 `make deploy HOST=northcom.local` targets one SSH host; `BRANCH=name` selects
 another published branch.
+After deploying, the last selected host checks both configured Pi-hole
+resolvers and the HTTPS dashboard and service URLs. Python 3 and outbound
+tailnet access are required on that host. A failed check fails the deployment
+command but does not roll back hosts already updated. HTTP redirects and
+authentication challenges count as reachable, not proof of application health.
+Run `python3 scripts/check-services.py` on a host to repeat the checks.
 
 For another com, add its host Compose file, configure its matching Tailscale
 hostname and SSH access, and install the repository, `.env`, and `compose.yaml`
