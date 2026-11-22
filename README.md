@@ -126,15 +126,16 @@ does three things:
 
 - Enables `systemd-timesyncd` NTP. Pis have no RTC, and a wrong clock breaks TLS
   and Tailscale.
-- Sets `RuntimeWatchdogSec=15` and `RebootWatchdogSec=2min` in
-  `/etc/systemd/system.conf.d/10-watchdog.conf`, so a hung host resets itself.
+- Relies on Raspberry Pi OS's own `40-rpi-enable-watchdog.conf` (60 s hardware
+  watchdog, reboot watchdog 2 min), so a hung host resets itself. The script only
+  reports it and removes the ineffective 15 s drop-in an earlier version wrote.
 - Installs log2ram from the azlux repository with `SIZE=128M` (override with
   `LOG2RAM_SIZE=`). It keeps `/var/log` in RAM and flushes it hourly and at
   shutdown; a power loss loses up to an hour of host logs.
 
 log2ram does not cover Docker container logs or Pi-hole's query database, which
 live under `/var/lib/docker`. Verify afterwards with `df -h /var/log`
-(`log2ram` filesystem), `timedatectl`, and `systemctl show -p RuntimeWatchdogUSec`.
+(`log2ram` filesystem), `timedatectl`, and `systemctl show -p RuntimeWatchdogUSec` (1min).
 
 ## Single-host installation
 1. Boot Raspberry PI using default Raspian image

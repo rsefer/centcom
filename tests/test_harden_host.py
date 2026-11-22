@@ -12,7 +12,7 @@ class HardenHostTests(unittest.TestCase):
 
     def test_sets_watchdog_ntp_and_log2ram(self):
         text = SCRIPT.read_text()
-        for expected in ("RuntimeWatchdogSec=15", "timedatectl set-ntp true", "install -y log2ram"):
+        for expected in ("10-watchdog.conf", "timedatectl set-ntp true", "install -y log2ram"):
             self.assertIn(expected, text)
 
 

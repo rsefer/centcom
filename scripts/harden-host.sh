@@ -1,5 +1,5 @@
 #!/bin/sh
-# Host hardening for a headless Pi: NTP, hardware watchdog, log2ram.
+# Host hardening for a headless Pi: NTP, hardware watchdog check, log2ram.
 # Idempotent. Run on the Pi as the login user (uses sudo). Reboot afterwards
 # so log2ram takes over /var/log.
 
@@ -22,18 +22,12 @@ else
 fi
 
 # --- Hardware watchdog -------------------------------------------------------
-# systemd pets /dev/watchdog; a hung kernel or stuck PID 1 stops the petting
-# and the SoC resets. 15 s is the BCM2835 maximum.
-sudo install -d -m 0755 /etc/systemd/system.conf.d
-watchdog_conf="$(mktemp)"
-trap 'rm -f "$watchdog_conf"' EXIT
-cat > "$watchdog_conf" <<'CONF'
-[Manager]
-RuntimeWatchdogSec=15
-RebootWatchdogSec=2min
-CONF
-if ! sudo cmp -s "$watchdog_conf" /etc/systemd/system.conf.d/10-watchdog.conf 2>/dev/null; then
-  sudo install -m 0644 "$watchdog_conf" /etc/systemd/system.conf.d/10-watchdog.conf
+# Raspberry Pi OS already ships /usr/lib/systemd/system.conf.d/40-rpi-enable-watchdog.conf
+# (RuntimeWatchdogSec=1m), so systemd pets /dev/watchdog and a hung host resets.
+# Remove the drop-in an earlier version of this script wrote; it sorted before
+# the OS file and never took effect.
+if [ -e /etc/systemd/system.conf.d/10-watchdog.conf ]; then
+  sudo rm /etc/systemd/system.conf.d/10-watchdog.conf
   sudo systemctl daemon-reexec
 fi
 
@@ -59,7 +53,7 @@ fi
 echo
 echo "Time:     $(timedatectl show -p NTPSynchronized --value 2>/dev/null | sed 's/^yes$/synchronized/;s/^no$/NOT synchronized yet/')"
 if [ -e /dev/watchdog ]; then
-  echo "Watchdog: /dev/watchdog present, systemd interval $(systemctl show -p RuntimeWatchdogUSec --value)"
+  echo "Watchdog: /dev/watchdog present, systemd timeout $(systemctl show -p RuntimeWatchdogUSec --value)"
 else
   echo "Watchdog: /dev/watchdog missing; the kernel has no watchdog device on this host" >&2
 fi
