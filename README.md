@@ -16,6 +16,13 @@ To operate on one application directly, run
 `docker compose --env-file .env -p centcom -f services/<app>/compose.yaml up -d`;
 keep the project name `centcom` so named volumes are shared with the full stack.
 
+## Development checks
+
+Run `make test` for the Python tests (Docker Compose is needed for the Compose
+configuration checks). Run `npm ci --prefix services/caddy/www` once, then
+`make dashboard-build` to build the dashboard. GitHub Actions runs both checks
+on pushes and pull requests.
+
 ## Multiple hosts
 
 The original `docker-compose.yml` remains available for a single host. For the

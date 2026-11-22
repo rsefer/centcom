@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy check-services boot-recover refresh-rss backup backup-infra
+.PHONY: help setup setup-cron reload deploy check-services boot-recover refresh-rss backup backup-infra test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -19,6 +19,12 @@ deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host]
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py
+
+test: ## Run the Python test suite
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+
+dashboard-build: ## Build the dashboard with installed npm dependencies
+	npm --prefix services/caddy/www run build
 
 boot-recover: ## Run the boot recovery routine manually (run on the Pi)
 	./scripts/boot-recover.sh
