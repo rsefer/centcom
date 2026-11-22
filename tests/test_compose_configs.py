@@ -34,7 +34,7 @@ class ComposeConfigTests(unittest.TestCase):
     def test_northcom_reuses_caddy_with_correct_paths_and_upstreams(self):
         config = self.config("northcom")
         self.assertEqual(set(config["services"]),
-                         {"caddy", "pihole", "pihole-sync", "beszel-agent"})
+                         {"caddy", "pihole", "pihole-sync", "beszel-agent", "status-agent"})
         caddy = config["services"]["caddy"]
         self.assertEqual(caddy["build"]["context"], str(ROOT / "services/caddy"))
         self.assertEqual(caddy["environment"]["RSS_UPSTREAM"], "100.97.91.90:18084")
@@ -50,7 +50,7 @@ class ComposeConfigTests(unittest.TestCase):
 
     def test_eastcom_uses_only_its_own_tailscale_ip(self):
         config = self.config("eastcom")
-        self.assertEqual(set(config["services"]), {"pihole", "beszel-agent"})
+        self.assertEqual(set(config["services"]), {"pihole", "beszel-agent", "status-agent"})
         pihole = config["services"]["pihole"]
         self.assertEqual(pihole["environment"]["FTLCONF_dns_listeningMode"], "ALL")
         self.assertEqual(
@@ -62,6 +62,11 @@ class ComposeConfigTests(unittest.TestCase):
         )
         self.assertEqual(config["services"]["beszel-agent"]["environment"]["LISTEN"],
                          "100.127.122.57:45876")
+        self.assertEqual(config["services"]["status-agent"]["environment"]["STATUS_HOST"], "eastcom")
+        self.assertEqual(
+            {p["host_ip"] for p in config["services"]["status-agent"]["ports"]},
+            {"100.127.122.57"},
+        )
 
     def test_southcom_reuses_service_paths_and_binds_to_tailnet(self):
         config = self.config("southcom")
@@ -72,6 +77,11 @@ class ComposeConfigTests(unittest.TestCase):
         self.assertEqual(mounts["/var/www/FreshRSS/extensions"], str(ROOT / "extensions"))
         self.assertEqual(services["opengym-mcp"]["build"]["context"],
                          str(ROOT / "services/opengym/mcp"))
+        status = services["status-agent"]
+        self.assertEqual(status["environment"]["STATUS_HOST"], "southcom")
+        self.assertEqual({p["host_ip"] for p in status["ports"]}, {"100.97.91.90"})
+        self.assertEqual({v["target"]: v["source"] for v in status["volumes"]}["/app/status-agent.py"],
+                         str(ROOT / "scripts/status-agent.py"))
         for service in ("beszel", "excalidraw", "opengym-app", "opengym-mcp", "rss"):
             self.assertIn("100.97.91.90", {p["host_ip"] for p in services[service]["ports"]})
 

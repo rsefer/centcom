@@ -6,3 +6,4 @@ include:
   - services/pihole/compose.yaml
   - services/golink/compose.yaml
   - services/beszel/compose.yaml
+  - services/status/compose.yaml

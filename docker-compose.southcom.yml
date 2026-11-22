@@ -1,6 +1,18 @@
 name: centcom
 
 services:
+  status-agent:
+    extends:
+      file: services/status/compose.yaml
+      service: status-agent
+    environment:
+      STATUS_HOST: southcom
+    ports: !override
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18086:8080"
+    volumes:
+      - ./scripts/status-agent.py:/app/status-agent.py:ro
+      - ./scripts/check-services.py:/app/check-services.py:ro
+
   beszel:
     extends:
       file: services/beszel/compose.yaml
@@ -61,6 +73,7 @@ volumes:
   beszel_socket:
   beszel_agent_data:
   opengym_data:
+  status_data:
 
 networks:
   caddy_net:

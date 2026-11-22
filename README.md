@@ -25,9 +25,9 @@ Each host file extends the shared service definitions under `services/`.
 
 | Host | Symlink target | Services |
 | --- | --- | --- |
-| northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Pi-hole sync, Beszel agent |
-| southcom | `docker-compose.southcom.yml` | Beszel, Excalidraw, FreshRSS, GoLink, openGym |
-| eastcom | `docker-compose.eastcom.yml` | Secondary Pi-hole, Beszel agent |
+| northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Pi-hole sync, Beszel agent, status agent |
+| southcom | `docker-compose.southcom.yml` | Beszel, Excalidraw, FreshRSS, GoLink, openGym, status agent |
+| eastcom | `docker-compose.eastcom.yml` | Secondary Pi-hole, Beszel agent, status agent |
 
 For example, on northcom run `ln -s docker-compose.northcom.yml compose.yaml`
 from the repository root; use each host's matching target on the other hosts.
@@ -127,6 +127,9 @@ make boot-recover
 - It is built inside the Caddy image (Node build stage in `services/caddy/Dockerfile`); the Pi does not need Node installed. After changing the dashboard, run `docker compose build caddy && docker compose up -d --no-deps caddy` (or `make reload`).
 - Press `⌘K` (or `Ctrl+K`) to open the service search palette. If the search narrows to one match, `Enter` opens it. Dark mode follows the OS `prefers-color-scheme`.
 - Service links derive their hostnames from the page's own hostname, so no domain is hard-coded. For local development, run `npm install && npm run dev` in `services/caddy/www`.
+- Live status polls each host's status agent every 30 seconds: agent reachability, the latest successful backup, and each Pi-hole's DNS response from that host. Agent reachability is not a full host-health check; use the Beszel link for metrics. DNS checks resolve `rss.${DOMAIN}` and verify it points to northcom.
+- Each agent exposes only these status fields on port 18086, bound to its Tailscale IP. The endpoint is unauthenticated, like the dashboard; restrict access with tailnet policy as needed. Caddy proxies the endpoints for the dashboard. No metrics history is stored.
+- Each successful backup records one latest-success timestamp and whether S3 sync was configured, in a small host-local Docker volume. The dashboard shows no backup until the next successful run after this feature is installed; an unsuccessful backup leaves the previous timestamp unchanged. A local-only backup is not an off-site backup.
 
 ## Power outage recovery
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.

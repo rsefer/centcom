@@ -1,6 +1,18 @@
 name: centcom
 
 services:
+  status-agent:
+    extends:
+      file: services/status/compose.yaml
+      service: status-agent
+    environment:
+      STATUS_HOST: eastcom
+    ports: !override
+      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18086:8080"
+    volumes:
+      - ./scripts/status-agent.py:/app/status-agent.py:ro
+      - ./scripts/check-services.py:/app/check-services.py:ro
+
   pihole:
     extends:
       file: services/pihole/compose.yaml
@@ -27,6 +39,7 @@ volumes:
   pihole_dnsmasq:
   beszel_agent_data:
   beszel_socket:
+  status_data:
 
 networks:
   caddy_net:

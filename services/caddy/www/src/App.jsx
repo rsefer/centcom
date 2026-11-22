@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
 	Box,
+	Badge,
 	Card,
 	Container,
 	Dialog,
@@ -25,6 +26,101 @@ const SERVICES = [
 	{ title: 'Tailscale Admin', icon: 'images/tailscale.svg', href: 'https://login.tailscale.com/admin/machines' },
 	{ title: 'Beszel', icon: 'images/beszel.svg', service: 'beszel' },
 ];
+
+const STATUS_HOSTS = ['northcom', 'southcom', 'eastcom'];
+
+async function fetchHostStatus(host) {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15000);
+	try {
+		const response = await fetch(`/status/${host}`, { signal: controller.signal, cache: 'no-store' });
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+		const data = await response.json();
+		if (data.host !== host && !(host === 'northcom' && data.host === 'centcom')) {
+			throw new Error('Unexpected status host');
+		}
+		return { host: data.host, data };
+	} catch (error) {
+		return { host, error: error.message };
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+function useHostStatus() {
+	const [result, setResult] = useState(null);
+
+	useEffect(() => {
+		let active = true;
+		async function refresh() {
+			const hosts = await Promise.all(STATUS_HOSTS.map(fetchHostStatus));
+			if (active) {
+				setResult({
+					hosts: hosts[0].host === 'centcom' ? hosts.slice(0, 1) : hosts,
+					checkedAt: new Date(),
+				});
+			}
+		}
+		refresh();
+		const timer = setInterval(refresh, 30000);
+		return () => {
+			active = false;
+			clearInterval(timer);
+		};
+	}, []);
+
+	return result;
+}
+
+function StatusCard({ host, data, error }) {
+	const backup = data?.backup;
+	const lastBackup = backup?.last_success
+		? `${new Date(backup.last_success).toLocaleString()} (${backup.offsite ? 'off-site' : 'local only'})`
+		: backup?.error ? 'Marker unreadable' : 'No successful backup recorded yet';
+
+	return (
+		<Card size="2">
+			<Flex justify="between" align="center" gap="2">
+				<Text weight="medium">{host}</Text>
+				<Badge color={error ? 'red' : 'green'}>{error ? 'Unavailable' : 'Agent reachable'}</Badge>
+			</Flex>
+			{error ? (
+				<Text as="p" size="2" color="gray" mt="2">Status unavailable: {error}</Text>
+			) : (
+				<Flex direction="column" gap="1" mt="2">
+					<Text size="2">Last backup: {lastBackup}</Text>
+					{Object.entries(data.dns).map(([name, result]) => (
+						<Text key={name} size="2">
+							{name === 'primary' ? 'Primary' : 'Secondary'} DNS: {result.ok ? 'responding' : `failed (${result.error})`}
+						</Text>
+					))}
+				</Flex>
+			)}
+		</Card>
+	);
+}
+
+function OperationalStatus() {
+	const status = useHostStatus();
+	return (
+		<Box mt="7">
+			<Flex justify="between" align="center" wrap="wrap" gap="2" mb="3">
+				<Heading as="h2" size="5">Live status</Heading>
+				<Link href={serviceHref({ service: 'beszel' })} size="2">Host metrics in Beszel</Link>
+			</Flex>
+			<Text as="p" size="2" color="gray" mb="3">
+				{status ? `Checked ${status.checkedAt.toLocaleTimeString()}; refreshes every 30 seconds.` : 'Checking hosts...'}
+			</Text>
+			{status && (
+				<Grid columns={{ initial: '1', md: '3' }} gap="3">
+					{status.hosts.map((host) => <StatusCard key={host.host} {...host} />)}
+				</Grid>
+			)}
+		</Box>
+	);
+}
 
 function serviceHref({ href, service, path = '' }) {
 	return href ?? `${window.location.protocol}//${service}.${window.location.hostname}${path}`;
@@ -154,6 +250,7 @@ export default function App() {
 							<ServiceCard key={item.title} item={item} />
 						))}
 					</Grid>
+					<OperationalStatus />
 					<Flex justify="center" mt="6">
 						<Text size="2" color="gray">
 							Press <Kbd>⌘K</Kbd> to search services

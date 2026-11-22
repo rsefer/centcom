@@ -15,6 +15,18 @@ services:
       GYM_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18082"
       GYM_MCP_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083"
       RSS_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18084"
+      STATUS_SOUTHCOM_UPSTREAM: "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18086"
+      STATUS_EASTCOM_UPSTREAM: "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18086"
+
+  status-agent:
+    extends:
+      file: services/status/compose.yaml
+      service: status-agent
+    environment:
+      STATUS_HOST: northcom
+    volumes:
+      - ./scripts/status-agent.py:/app/status-agent.py:ro
+      - ./scripts/check-services.py:/app/check-services.py:ro
 
   pihole:
     extends:
@@ -59,6 +71,7 @@ volumes:
   pihole_dnsmasq:
   beszel_agent_data:
   beszel_socket:
+  status_data:
 
 networks:
   caddy_net:

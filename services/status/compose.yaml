@@ -1,0 +1,25 @@
+services:
+  status-agent:
+    image: python:3.13-alpine
+    command: ["python", "/app/status-agent.py"]
+    environment:
+      STATUS_HOST: centcom
+      DOMAIN: ${DOMAIN}
+      DNS_PRIMARY: ${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}
+      DNS_SECONDARY: ${TAILSCALE_IP_EASTCOM:-}
+    ports:
+      - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:18086:8080"
+    volumes:
+      - ../../scripts/status-agent.py:/app/status-agent.py:ro
+      - ../../scripts/check-services.py:/app/check-services.py:ro
+      - status_data:/state:ro
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
+volumes:
+  status_data:
+
+networks:
+  caddy_net:
+    external: true

@@ -10,8 +10,19 @@
 
 # Dashboard static server
 {$DOMAIN}, http:// {
-  root * /usr/share/caddy
-  file_server
+  handle_path /status/northcom {
+    reverse_proxy status-agent:8080
+  }
+  handle_path /status/southcom {
+    reverse_proxy {$STATUS_SOUTHCOM_UPSTREAM}
+  }
+  handle_path /status/eastcom {
+    reverse_proxy {$STATUS_EASTCOM_UPSTREAM}
+  }
+  handle {
+    root * /usr/share/caddy
+    file_server
+  }
 }
 
 # Reusable snippet for Tailscale HTTPS upstreams.

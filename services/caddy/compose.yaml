@@ -32,6 +32,8 @@ services:
       - GYM_UPSTREAM=${GYM_UPSTREAM:-opengym-app:80}
       - GYM_MCP_UPSTREAM=${GYM_MCP_UPSTREAM:-opengym-mcp:8000}
       - RSS_UPSTREAM=${RSS_UPSTREAM:-rss:80}
+      - STATUS_SOUTHCOM_UPSTREAM=${STATUS_SOUTHCOM_UPSTREAM:-status-agent:8080}
+      - STATUS_EASTCOM_UPSTREAM=${STATUS_EASTCOM_UPSTREAM:-status-agent:8080}
     networks:
       - caddy_net
 

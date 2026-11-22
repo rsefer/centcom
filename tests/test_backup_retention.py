@@ -47,6 +47,7 @@ class BackupRetentionTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(old.exists())
             self.assertNotIn("amazon/aws-cli", log.read_text())
+            self.assertNotIn("centcom_status_data", log.read_text())
             return result
 
     def test_missing_volume_does_not_create_or_upload_an_empty_backup(self):

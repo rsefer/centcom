@@ -245,4 +245,13 @@ find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
 	-name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]' \
 	-mtime "+$((BACKUP_RETENTION - 1))" -exec rm -rf -- {} +
 
+offsite=false
+if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
+	offsite=true
+fi
+docker run --rm -v centcom_status_data:/status alpine sh -c '
+	printf "{\"last_success\":\"%s\",\"offsite\":%s}\n" "$1" "$2" > /status/last-backup.tmp &&
+	mv /status/last-backup.tmp /status/last-backup.json
+' sh "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$offsite"
+
 echo "Backup completed successfully"
