@@ -35,13 +35,13 @@ fi
 # Keeps host /var/log (journal, syslog) in RAM and flushes it hourly and at
 # shutdown. Docker container logs and Pi-hole data are not under /var/log.
 if ! dpkg -s log2ram > /dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y ca-certificates curl gnupg
+  sudo apt-get -o DPkg::Lock::Timeout=300 update
+  sudo apt-get -o DPkg::Lock::Timeout=300 install -y ca-certificates curl gnupg
   sudo curl -fsSL https://azlux.fr/repo.gpg -o /usr/share/keyrings/azlux-archive-keyring.gpg
   echo "deb [signed-by=/usr/share/keyrings/azlux-archive-keyring.gpg] http://packages.azlux.fr/debian/ $(. /etc/os-release && echo "$VERSION_CODENAME") main" |
     sudo tee /etc/apt/sources.list.d/azlux.list > /dev/null
-  sudo apt-get update
-  sudo apt-get install -y log2ram
+  sudo apt-get -o DPkg::Lock::Timeout=300 update
+  sudo apt-get -o DPkg::Lock::Timeout=300 install -y log2ram
 fi
 if grep -q '^SIZE=' /etc/log2ram.conf; then
   sudo sed -i "s/^SIZE=.*/SIZE=$LOG2RAM_SIZE/" /etc/log2ram.conf
