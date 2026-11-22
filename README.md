@@ -88,6 +88,19 @@ command but does not roll back hosts already updated. HTTP redirects and
 authentication challenges count as reachable, not proof of application health.
 Run `make check-services` on a configured host to repeat the checks.
 
+`make check-hosts` reports drift without changing anything. It connects to
+each host as `make deploy` does and compares the checked-out commit (against
+each other and `origin/main`), branch and working-tree cleanliness, the
+`compose.yaml` symlink target, each container's Compose config hash against the
+checked-out files, each container's image against the locally tagged image, and
+registry digests for images shared across hosts. It also flags services that
+are missing, stopped, or no longer in the config. A stale config hash or image
+means the host needs `make reload`. Locally built images (Caddy, openGym MCP)
+are not compared by digest across hosts, and hashes assume the same
+`COMPOSE_PROFILES` as the `.env` on the host. The command exits non-zero when
+drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and
+skips the symlink expectation like `make deploy`.
+
 For another com, add its host Compose file, configure its matching Tailscale
 hostname and SSH access, and install the repository, `.env`, and `compose.yaml`
 symlink on that Pi before deploying. The one-time migration stashes on the two
