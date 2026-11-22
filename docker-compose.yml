@@ -7,3 +7,4 @@ include:
   - services/golink/compose.yaml
   - services/beszel/compose.yaml
   - services/status/compose.yaml
+  - services/karakeep/compose.yaml

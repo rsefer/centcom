@@ -73,6 +73,23 @@ services:
     ports:
       - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083:8000"
 
+  karakeep:
+    extends:
+      file: services/karakeep/compose.yaml
+      service: karakeep
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18087:3000"
+
+  karakeep-chrome:
+    extends:
+      file: services/karakeep/compose.yaml
+      service: karakeep-chrome
+
+  karakeep-meili:
+    extends:
+      file: services/karakeep/compose.yaml
+      service: karakeep-meili
+
   rss:
     extends:
       file: services/freshrss/compose.yaml
@@ -90,6 +107,8 @@ volumes:
   beszel_socket:
   beszel_agent_data:
   opengym_data:
+  karakeep_data:
+  karakeep_meili:
   status_data:
 
 networks:

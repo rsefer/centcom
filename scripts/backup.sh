@@ -114,6 +114,20 @@ archive_mount opengym_data centcom_opengym_data --exclude './uploads' --exclude 
 restart_services
 fi
 
+# Karakeep: db.db (bookmarks, lists, tags, highlights, users, API keys) and
+# assets/ (saved page text over 5 KB, screenshots, banners, uploads) are kept.
+# queue.db (background job queue) is excluded; Meilisearch is not backed up
+# at all, since its index is rebuilt from db.db (Admin > Reindex). The app is
+# stopped briefly so the WAL is checkpointed into db.db.
+if has_service karakeep; then
+stop_service karakeep
+archive_mount karakeep_data centcom_karakeep_data \
+	--exclude './queue.db' \
+	--exclude './queue.db-wal' \
+	--exclude './queue.db-shm'
+restart_services
+fi
+
 # Remaining named volumes (live archives; their sqlite data is low-write).
 # Pi-hole: query history (pihole-FTL.db) and the compiled blocklist are
 # excluded. gravity.db also holds adlists, allow/deny rules, groups and clients

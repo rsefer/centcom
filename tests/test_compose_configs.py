@@ -62,6 +62,7 @@ class ComposeConfigTests(unittest.TestCase):
                 "PIHOLE_UPSTREAM": "pihole:80", "RSS_UPSTREAM": f"{southcom}:18084",
                 "DRAW_UPSTREAM": f"{southcom}:18081", "GYM_UPSTREAM": f"{southcom}:18082",
                 "BESZEL_UPSTREAM": f"{southcom}:18090", "GYM_MCP_UPSTREAM": f"{southcom}:18083",
+                "KEEP_UPSTREAM": f"{southcom}:18087",
                 "STATUS_NORTHCOM_UPSTREAM": "status-agent:8080",
                 "STATUS_SOUTHCOM_UPSTREAM": f"{southcom}:18086",
                 "STATUS_EASTCOM_UPSTREAM": f"{eastcom}:18086",
@@ -70,6 +71,7 @@ class ComposeConfigTests(unittest.TestCase):
                 "PIHOLE_UPSTREAM": f"{eastcom}:18085", "RSS_UPSTREAM": "rss:80",
                 "DRAW_UPSTREAM": "excalidraw:80", "GYM_UPSTREAM": "opengym-app:80",
                 "BESZEL_UPSTREAM": "beszel:8090", "GYM_MCP_UPSTREAM": "opengym-mcp:8000",
+                "KEEP_UPSTREAM": "karakeep:3000",
                 "STATUS_NORTHCOM_UPSTREAM": f"{northcom}:18086",
                 "STATUS_SOUTHCOM_UPSTREAM": "status-agent:8080",
                 "STATUS_EASTCOM_UPSTREAM": f"{eastcom}:18086",
@@ -130,7 +132,7 @@ class ComposeConfigTests(unittest.TestCase):
         self.assertEqual({p["host_ip"] for p in status["ports"]}, {"100.97.91.90"})
         self.assertEqual({v["target"]: v["source"] for v in status["volumes"]}["/app/status-agent.py"],
                          str(ROOT / "scripts/status-agent.py"))
-        for service in ("beszel", "excalidraw", "opengym-app", "opengym-mcp", "rss"):
+        for service in ("beszel", "excalidraw", "karakeep", "opengym-app", "opengym-mcp", "rss"):
             self.assertIn("100.97.91.90", {p["host_ip"] for p in services[service]["ports"]})
 
 

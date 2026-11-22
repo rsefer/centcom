@@ -90,6 +90,15 @@ container = "opengym-app:80"
 placement = [{ host = "southcom", port = 18082 }]
 checks = ["deploy", "failover"]
 
+[services.keep]
+title = "Karakeep"
+icon = "images/karakeep.svg"
+dashboard = "primary"
+path = "/api/health"
+container = "karakeep:3000"
+placement = [{ host = "southcom", port = 18087 }]
+checks = ["deploy", "failover"]
+
 [services.beszel]
 title = "Beszel"
 icon = "images/beszel.svg"

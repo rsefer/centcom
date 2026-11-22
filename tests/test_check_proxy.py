@@ -28,7 +28,7 @@ class ProxyCheckTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("rss.example.com/: unexpected HTTP 502", result.stderr)
             calls = (root / "curl.log").read_text().splitlines()
-            self.assertEqual(len(calls), 10)
+            self.assertEqual(len(calls), 11)
             self.assertTrue(any("gym.example.com:443:100.64.0.3" in call for call in calls))
             self.assertTrue(any("https://pihole.example.com/admin/" in call for call in calls))
             self.assertTrue(any("https://gym-mcp.example.com/mcp" in call for call in calls))

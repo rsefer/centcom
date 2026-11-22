@@ -11,6 +11,7 @@
 //   80, 443      Caddy (northcom primary, southcom standby); 443/udp is HTTP/3
 //   22           sshd
 //   18081-18084  southcom apps, read directly by the other Caddy
+//   18087        southcom Karakeep, read directly by the other Caddy
 //   18085        eastcom Pi-hole admin API (Caddy, Nebula Sync)
 //   18086        status agent on every host
 //   18090        Beszel hub (southcom)
@@ -67,13 +68,13 @@
 		{
 			"src": ["autogroup:admin"],
 			"dst": ["tag:centcom"],
-			"ip":  ["tcp:22", "tcp:18081-18086", "tcp:18090"],
+			"ip":  ["tcp:22", "tcp:18081-18087", "tcp:18090"],
 		},
 		// Pi <-> Pi: Caddy upstreams, status agents, Nebula Sync, Beszel hub.
 		{
 			"src": ["tag:centcom"],
 			"dst": ["tag:centcom"],
-			"ip":  ["tcp:18081-18086", "tcp:18090", "tcp:45876"],
+			"ip":  ["tcp:18081-18087", "tcp:18090", "tcp:45876"],
 		},
 		// Caddy -> tailnet HTTPS machines it proxies.
 		{
