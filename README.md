@@ -19,8 +19,9 @@ keep the project name `centcom` so named volumes are shared with the full stack.
 ## Development checks
 
 Run `make test` for the Python tests (Docker Compose is needed for the Compose
-configuration checks). Run `npm ci --prefix services/caddy/www` once, then
-`make dashboard-build` to build the dashboard.
+configuration checks) and `make dashboard-test` for the Node.js dashboard
+tests. Run `npm ci --prefix services/caddy/www` once, then `make dashboard-build`
+to build the dashboard.
 
 ## Multiple hosts
 
@@ -134,8 +135,9 @@ make boot-recover
 - It is built inside the Caddy image (Node build stage in `services/caddy/Dockerfile`); the Pi does not need Node installed. After changing the dashboard, run `docker compose build caddy && docker compose up -d --no-deps caddy` (or `make reload`).
 - Press `⌘K` (or `Ctrl+K`) to open the service search palette. If the search narrows to one match, `Enter` opens it. Dark mode follows the OS `prefers-color-scheme`.
 - Service links derive their hostnames from the page's own hostname, so no domain is hard-coded. For local development, run `npm install && npm run dev` in `services/caddy/www`.
-- Live status polls each host's status agent every 30 seconds: agent reachability, the latest successful backup, and each Pi-hole's DNS response from that host. Agent reachability is not a full host-health check; use the Beszel link for metrics. DNS checks resolve `rss.${DOMAIN}` and report whether it points to northcom or southcom.
-- Each agent exposes only these status fields on port 18086, bound to its Tailscale IP. The endpoint is unauthenticated, like the dashboard; restrict access with tailnet policy as needed. Caddy proxies the endpoints for the dashboard. No metrics history is stored.
+- Live status polls each host's status agent every 30 seconds: agent reachability, the latest successful backup, and each Pi-hole's DNS response from that host. Backups more than 48 hours old are marked overdue; missing, invalid, or future timestamps are unknown. Agent reachability does not indicate application health; use the Beszel link for host metrics. DNS checks resolve `rss.${DOMAIN}` and report whether it points to northcom or southcom.
+- While the dashboard is open, the active proxy's local status agent checks its application HTTPS URLs every 30 seconds. HTTP success, redirects and authentication challenges indicate reachability only, not full application health. Failed probes and unavailable checks are reported separately from agent reachability; the external Tailscale Admin link is not probed. These checks do not send alerts when the dashboard is closed.
+- Each agent exposes these status fields and application checks on port 18086, bound to its Tailscale IP. The endpoints are unauthenticated, like the dashboard; restrict access with tailnet policy as needed. Caddy proxies the endpoints for the dashboard. No metrics history is stored.
 - Each successful backup records one latest-success timestamp and whether S3 sync was configured, in a small host-local Docker volume. The dashboard shows no backup until the next successful run after this feature is installed; an unsuccessful backup leaves the previous timestamp unchanged. A local-only backup is not an off-site backup.
 
 ## Power outage recovery

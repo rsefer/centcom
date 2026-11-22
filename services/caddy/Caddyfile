@@ -10,6 +10,9 @@
 
 # Dashboard static server
 {$DOMAIN}, http:// {
+  handle /status/applications {
+    reverse_proxy status-agent:8080
+  }
   handle_path /status/northcom {
     reverse_proxy {$STATUS_NORTHCOM_UPSTREAM:status-agent:8080}
   }

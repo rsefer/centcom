@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { backupStatus } from './backup-status.js';
 import {
 	Box,
 	Badge,
@@ -49,6 +50,26 @@ async function fetchHostStatus(host) {
 	}
 }
 
+async function fetchApplications() {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15000);
+	try {
+		const response = await fetch('/status/applications', { signal: controller.signal, cache: 'no-store' });
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+		const data = await response.json();
+		if (!data.applications || typeof data.applications !== 'object') {
+			throw new Error('Invalid application status');
+		}
+		return { applications: data.applications };
+	} catch (error) {
+		return { error: error.message };
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
 function useHostStatus() {
 	const [result, setResult] = useState(null);
 
@@ -74,23 +95,45 @@ function useHostStatus() {
 	return result;
 }
 
+function useApplicationStatus() {
+	const [result, setResult] = useState(null);
+	useEffect(() => {
+		let active = true;
+		async function refresh() {
+			const next = await fetchApplications();
+			if (active) {
+				setResult({ ...next, checkedAt: new Date() });
+			}
+		}
+		refresh();
+		const timer = setInterval(refresh, 30000);
+		return () => {
+			active = false;
+			clearInterval(timer);
+		};
+	}, []);
+	return result;
+}
+
 function StatusCard({ host, data, error }) {
-	const backup = data?.backup;
-	const lastBackup = backup?.last_success
-		? `${new Date(backup.last_success).toLocaleString()} (${backup.offsite ? 'off-site' : 'local only'})`
-		: backup?.error ? 'Marker unreadable' : 'No successful backup recorded yet';
+	const backup = backupStatus(data?.backup);
 
 	return (
 		<Card size="2">
 			<Flex justify="between" align="center" gap="2">
 				<Text weight="medium">{host}</Text>
-				<Badge color={error ? 'red' : 'green'}>{error ? 'Unavailable' : 'Agent reachable'}</Badge>
+				<Badge color={error ? 'red' : 'green'}>{error ? 'Agent unreachable' : 'Agent reachable'}</Badge>
 			</Flex>
 			{error ? (
 				<Text as="p" size="2" color="gray" mt="2">Status unavailable: {error}</Text>
 			) : (
 				<Flex direction="column" gap="1" mt="2">
-					<Text size="2">Last backup: {lastBackup}</Text>
+					<Flex align="center" gap="2" wrap="wrap">
+						<Text size="2">Last backup: {backup.detail}</Text>
+						<Badge color={backup.state === 'overdue' ? 'red' : backup.state === 'current' ? 'green' : 'amber'}>
+							{backup.state === 'overdue' ? 'Overdue (>48h)' : backup.state === 'current' ? 'Current' : 'Unknown'}
+						</Badge>
+					</Flex>
 					{Object.entries(data.dns).map(([name, result]) => (
 						<Text key={name} size="2">
 							{name === 'primary' ? 'Primary' : 'Secondary'} DNS: {result.ok ? `responding${result.proxy ? ` (${result.proxy} proxy)` : ''}` : `failed (${result.error})`}
@@ -104,6 +147,7 @@ function StatusCard({ host, data, error }) {
 
 function OperationalStatus() {
 	const status = useHostStatus();
+	const applicationStatus = useApplicationStatus();
 	return (
 		<Box mt="7">
 			<Flex justify="between" align="center" wrap="wrap" gap="2" mb="3">
@@ -111,11 +155,41 @@ function OperationalStatus() {
 				<Link href={serviceHref({ service: 'beszel' })} size="2">Host metrics in Beszel</Link>
 			</Flex>
 			<Text as="p" size="2" color="gray" mb="3">
-				{status ? `Checked ${status.checkedAt.toLocaleTimeString()}; refreshes every 30 seconds.` : 'Checking hosts...'}
+				{status ? `Hosts checked ${status.checkedAt.toLocaleTimeString()}; refreshes every 30 seconds.` : 'Checking hosts...'}
+			</Text>
+			<Text as="p" size="2" color="gray" mb="3">
+				Agent reachability does not indicate application health.
 			</Text>
 			{status && (
 				<Grid columns={{ initial: '1', md: '3' }} gap="3">
 					{status.hosts.map((host) => <StatusCard key={host.host} {...host} />)}
+				</Grid>
+			)}
+			<Heading as="h3" size="4" mt="5" mb="2">Application reachability</Heading>
+			<Text as="p" size="2" color="gray" mb="3">
+				HTTPS responses are checked through the active proxy. Reachable does not guarantee application health.
+				{applicationStatus && ` Checked ${applicationStatus.checkedAt.toLocaleTimeString()}; refreshes every 30 seconds.`}
+			</Text>
+			{!applicationStatus ? (
+				<Text size="2" color="gray">Checking applications...</Text>
+			) : applicationStatus.error ? (
+				<Text size="2" color="red">Application checks unavailable: {applicationStatus.error}</Text>
+			) : (
+				<Grid columns={{ initial: '1', sm: '2', md: '3' }} gap="2">
+					{SERVICES.filter(({ service }) => service).map(({ title, service }) => {
+						const result = applicationStatus.applications[service];
+						return (
+							<Card key={service} size="1">
+								<Flex justify="between" align="center" gap="2">
+									<Text size="2">{title}</Text>
+									<Badge color={!result ? 'amber' : result.ok ? 'green' : 'red'}>
+										{!result ? 'Unknown' : result.ok ? `Reachable (HTTP ${result.status})` : 'Check failed'}
+									</Badge>
+								</Flex>
+								{result && !result.ok && <Text as="p" size="1" color="red" mt="1">{result.error}</Text>}
+							</Card>
+						);
+					})}
 				</Grid>
 			)}
 		</Box>

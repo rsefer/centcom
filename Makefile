@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy check-services check-proxy boot-recover refresh-rss backup backup-infra test dashboard-build
+.PHONY: help setup setup-cron reload deploy check-services check-proxy boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -25,6 +25,9 @@ check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROX
 
 test: ## Run the Python test suite
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+
+dashboard-test: ## Run dashboard unit tests
+	node --test services/caddy/www/src/*.test.js
 
 dashboard-build: ## Build the dashboard with installed npm dependencies
 	npm --prefix services/caddy/www run build

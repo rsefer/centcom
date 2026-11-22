@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
@@ -8,12 +9,22 @@ import os
 from pathlib import Path
 import signal
 import sys
+import urllib.error
 
 
 spec = importlib.util.spec_from_file_location("check_services", Path(__file__).with_name("check-services.py"))
 checks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checks)
 BACKUP_MARKER = Path("/state/last-backup.json")
+APPLICATIONS = {
+    "ha": "/",
+    "pihole": "/admin/",
+    "go": "/",
+    "rss": "/",
+    "draw": "/",
+    "gym": "/",
+    "beszel": "/",
+}
 
 
 def backup_status():
@@ -57,12 +68,36 @@ def status():
     }
 
 
+def application_status(service, path, domain):
+    url = f"https://{service}.{domain}{path}"
+    try:
+        return {"ok": True, "status": checks.check_url(url)}
+    except urllib.error.HTTPError as error:
+        return {"ok": False, "error": f"HTTP {error.code}"}
+    except (OSError, urllib.error.URLError, ValueError) as error:
+        return {"ok": False, "error": str(error)}
+
+
+def applications_status():
+    domain = os.environ["DOMAIN"]
+    with ThreadPoolExecutor(max_workers=len(APPLICATIONS)) as executor:
+        futures = {
+            service: executor.submit(application_status, service, path, domain)
+            for service, path in APPLICATIONS.items()
+        }
+        return {"applications": {service: future.result() for service, future in futures.items()}}
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path != "/":
+        if self.path == "/":
+            result = status()
+        elif self.path == "/status/applications":
+            result = applications_status()
+        else:
             self.send_error(404)
             return
-        data = json.dumps(status()).encode("utf-8")
+        data = json.dumps(result).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Cache-Control", "no-store")

@@ -57,6 +57,22 @@ class StatusAgentTests(unittest.TestCase):
                                               "example.com", "100.64.0.3"),
                              {"ok": True, "proxy": "standby"})
 
+    def test_application_checks_distinguish_http_responses_and_failures(self):
+        def check(url):
+            if url == "https://rss.example.com/":
+                raise urllib.error.HTTPError(url, 503, "Unavailable", {}, None)
+            if url == "https://gym.example.com/":
+                raise urllib.error.URLError("connection failed")
+            return 302
+
+        with mock.patch.dict(os.environ, {"DOMAIN": "example.com"}), \
+             mock.patch.object(agent.checks, "check_url", side_effect=check):
+            applications = agent.applications_status()["applications"]
+        self.assertEqual(applications["ha"], {"ok": True, "status": 302})
+        self.assertEqual(applications["rss"], {"ok": False, "error": "HTTP 503"})
+        self.assertFalse(applications["gym"]["ok"])
+        self.assertIn("connection failed", applications["gym"]["error"])
+
     def test_http_endpoint_returns_current_status(self):
         server = agent.ThreadingHTTPServer(("127.0.0.1", 0), agent.Handler)
         worker = threading.Thread(target=server.serve_forever)
@@ -72,6 +88,10 @@ class StatusAgentTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(url + "/other")
             self.assertEqual(error.exception.code, 404)
+        with mock.patch.object(agent, "applications_status",
+                               return_value={"applications": {"rss": {"ok": True, "status": 200}}}):
+            with urllib.request.urlopen(url + "/status/applications") as response:
+                self.assertEqual(json.load(response)["applications"]["rss"]["status"], 200)
 
 
 if __name__ == "__main__":
