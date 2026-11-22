@@ -15,8 +15,8 @@ dirty|0
 symlink|docker-compose.eastcom.yml
 confighash|pihole|h1
 confighash|beszel-agent|h2
-container|pihole|h1|pihole/pihole:latest|sha256:one|running
-container|beszel-agent|h2|henrygd/beszel-agent:latest|sha256:two|running
+container|pihole|h1|pihole/pihole:latest|running|/pihole
+container|beszel-agent|h2|henrygd/beszel-agent:latest|running|/centcom-beszel-agent-1
 image|pihole/pihole:latest|sha256:one|pihole/pihole@sha256:aaa,
 image|henrygd/beszel-agent:latest|sha256:two|henrygd/beszel-agent@sha256:bbb,
 """ % HEAD
@@ -38,6 +38,8 @@ class CheckHostsTests(unittest.TestCase):
         self.assertEqual(parsed["dirty"], 0)
         self.assertEqual(parsed["hashes"], {"pihole": "h1", "beszel-agent": "h2"})
         self.assertEqual(len(parsed["containers"]), 2)
+        self.assertEqual(parsed["containers"][0]["name"], "pihole")
+        self.assertEqual(hosts.parse("plan|pihole|Recreate\n")["plan"], [("pihole", "Recreate")])
         self.assertEqual(parsed["images"]["pihole/pihole:latest"]["digests"], {"sha256:aaa"})
 
     def test_digest_equal_to_image_id_is_ignored(self):
@@ -73,19 +75,30 @@ class CheckHostsTests(unittest.TestCase):
         self.assertEqual(problems, ["eastcom: pihole was created from an older Compose "
                                     "config (recreate it)"])
 
-    def test_stale_image(self):
-        parsed = report()
-        parsed["images"]["pihole/pihole:latest"]["id"] = "sha256:newer"
+    def test_compose_plan_reports_pending_changes(self):
+        parsed = report(plan=[("pihole", "Recreate")])
         problems = self.analyze({"eastcom": parsed})
         self.assertEqual(len(problems), 1)
-        self.assertIn("older pihole/pihole:latest", problems[0])
+        self.assertIn("would recreate pihole", problems[0])
+
+    def test_plan_does_not_repeat_a_flagged_service(self):
+        parsed = report(plan=[("pihole", "Recreate")])
+        parsed["hashes"]["pihole"] = "changed"
+        problems = self.analyze({"eastcom": parsed})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("older Compose config", problems[0])
+
+    def test_plan_maps_container_names_to_services(self):
+        parsed = report(plan=[("centcom-beszel-agent-1", "Recreate")])
+        self.assertIn("would recreate centcom-beszel-agent-1",
+                      self.analyze({"eastcom": parsed})[0])
 
     def test_missing_stopped_and_orphan_containers(self):
         parsed = report()
         parsed["containers"] = [c for c in parsed["containers"] if c["service"] != "pihole"]
         parsed["containers"][0]["state"] = "exited"
         parsed["containers"].append({"service": "old", "hash": "x", "ref": "x",
-                                     "image_id": "x", "state": "running"})
+                                     "state": "running", "name": "old"})
         text = "\n".join(self.analyze({"eastcom": parsed}))
         self.assertIn("pihole is configured but has no container", text)
         self.assertIn("beszel-agent is exited", text)

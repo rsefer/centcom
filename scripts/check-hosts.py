@@ -9,7 +9,8 @@ running container image IDs, then reports drift:
 * dirty working tree or unexpected branch
 * compose.yaml not selecting docker-compose.<host>.yml
 * containers created from an older Compose config than the checked-out files
-* containers using an older local image than the one currently tagged
+* anything `docker compose up -d` would still change (a dry run, so stale
+  images and other changes Compose itself detects are covered)
 * services that are missing, stopped, or no longer in the config
 * the same image reference resolving to different registry digests per host
 """
@@ -23,6 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HOST_FILE = re.compile(r"^docker-compose\.([a-z0-9][a-z0-9-]*)\.yml$")
 SAFE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/-]*$")
+
+PLAN_VERBS = {"Recreate": "recreate", "Create": "create", "Starting": "start",
+              "Stopping": "stop and remove"}
 
 REMOTE = r"""
 set -u
@@ -43,16 +47,18 @@ rm -f "$errors"
 ids=$(docker ps -aq --filter label=com.docker.compose.project=centcom \
 	--filter label=com.docker.compose.oneoff=False 2>/dev/null || true)
 if [ -n "$ids" ]; then
-	docker inspect --format 'container|{{index .Config.Labels "com.docker.compose.service"}}|{{index .Config.Labels "com.docker.compose.config-hash"}}|{{.Config.Image}}|{{.Image}}|{{.State.Status}}' $ids
+	docker inspect --format 'container|{{index .Config.Labels "com.docker.compose.service"}}|{{index .Config.Labels "com.docker.compose.config-hash"}}|{{.Config.Image}}|{{.State.Status}}|{{.Name}}' $ids
 	docker inspect --format '{{.Config.Image}}' $ids | sort -u | while read -r ref; do
 		docker image inspect --format "image|$ref|{{.Id}}|{{range .RepoDigests}}{{.}},{{end}}" "$ref" 2>/dev/null || true
 	done
 fi
+docker compose up -d --dry-run --pull never --no-build --remove-orphans </dev/null 2>&1 |
+	awk '$1 == "Container" && ($3 == "Recreate" || $3 == "Create" || $3 == "Starting" || $3 == "Stopping") && !seen[$2]++ { print "plan|" $2 "|" $3 }'
 """
 
 
 def parse(output):
-    report = {"hashes": {}, "containers": [], "images": {}, "errors": []}
+    report = {"hashes": {}, "containers": [], "images": {}, "plan": [], "errors": []}
     for line in output.splitlines():
         kind, _, rest = line.partition("|")
         fields = rest.split("|")
@@ -63,8 +69,11 @@ def parse(output):
         elif kind == "confighash" and len(fields) == 2:
             report["hashes"][fields[0]] = fields[1]
         elif kind == "container" and len(fields) == 5:
-            report["containers"].append(dict(zip(
-                ("service", "hash", "ref", "image_id", "state"), fields)))
+            container = dict(zip(("service", "hash", "ref", "state", "name"), fields))
+            container["name"] = container["name"].lstrip("/")
+            report["containers"].append(container)
+        elif kind == "plan" and len(fields) == 2:
+            report["plan"].append(tuple(fields))
         elif kind == "image" and len(fields) == 3:
             # Locally built images can list their own ID as a repo digest.
             digests = {d.split("@", 1)[-1] for d in fields[2].split(",") if d}
@@ -102,23 +111,31 @@ def analyze(reports, expected_head=None, branch="main", expected_links=None):
             problems.append(f"{host}: compose.yaml -> {report.get('symlink')}, expected {link}")
 
         containers = {c["service"]: c for c in report["containers"]}
+        flagged = set()
         for service, wanted in sorted(report["hashes"].items()):
             container = containers.get(service)
             if container is None:
                 problems.append(f"{host}: {service} is configured but has no container")
+                flagged.add(service)
                 continue
             if container["state"] != "running":
                 problems.append(f"{host}: {service} is {container['state']}")
+                flagged.add(service)
             if container["hash"] != wanted:
                 problems.append(f"{host}: {service} was created from an older Compose "
                                 "config (recreate it)")
-            image = report["images"].get(container["ref"])
-            if image and image["id"] != container["image_id"]:
-                problems.append(f"{host}: {service} runs an older {container['ref']} "
-                                "than the one pulled locally (recreate it)")
+                flagged.add(service)
         if report["hashes"]:
             for service in sorted(set(containers) - set(report["hashes"])):
                 problems.append(f"{host}: {service} is running but not in the Compose config")
+                flagged.add(service)
+        names = {c["name"]: c["service"] for c in report["containers"]}
+        for name, action in report["plan"]:
+            if names.get(name) in flagged:
+                continue
+            verb = PLAN_VERBS.get(action, action.lower())
+            problems.append(f"{host}: `docker compose up -d` would {verb} {name} "
+                            "(for example a newer image; run make reload)")
 
     heads = {r["head"][:7] for r in live.values() if r.get("head")}
     if len(heads) > 1 and not expected_head:

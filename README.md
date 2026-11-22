@@ -92,10 +92,11 @@ Run `make check-services` on a configured host to repeat the checks.
 each host as `make deploy` does and compares the checked-out commit (against
 each other and `origin/main`), branch and working-tree cleanliness, the
 `compose.yaml` symlink target, each container's Compose config hash against the
-checked-out files, each container's image against the locally tagged image, and
-registry digests for images shared across hosts. It also flags services that
-are missing, stopped, or no longer in the config. A stale config hash or image
-means the host needs `make reload`. Locally built images (Caddy, openGym MCP)
+checked-out files, anything a `docker compose up -d --dry-run` would still
+change (such as a newer image), and registry digests for images shared across
+hosts. It also flags services that are missing, stopped, or no longer in the
+config. A stale config hash or a pending change means the host needs
+`make reload`. Locally built images (Caddy, openGym MCP)
 are not compared by digest across hosts, and hashes assume the same
 `COMPOSE_PROFILES` as the `.env` on the host. The command exits non-zero when
 drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and

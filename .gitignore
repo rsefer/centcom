@@ -5,3 +5,4 @@ backup.log
 /compose.yaml
 /data/
 /extensions/
+__pycache__/
