@@ -20,8 +20,7 @@ keep the project name `centcom` so named volumes are shared with the full stack.
 
 Run `make test` for the Python tests (Docker Compose is needed for the Compose
 configuration checks). Run `npm ci --prefix services/caddy/www` once, then
-`make dashboard-build` to build the dashboard. GitHub Actions runs both checks
-on pushes and pull requests.
+`make dashboard-build` to build the dashboard.
 
 ## Multiple hosts
 
