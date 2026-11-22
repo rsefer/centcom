@@ -29,7 +29,13 @@ class ComposeConfigTests(unittest.TestCase):
              "config", "--format", "json"],
             cwd=ROOT, env=env, capture_output=True, text=True, check=True,
         )
-        return json.loads(result.stdout)
+        config = json.loads(result.stdout)
+        for service in config["services"].values():
+            self.assertEqual(service["logging"], {
+                "driver": "json-file",
+                "options": {"max-size": "10m", "max-file": "3"},
+            })
+        return config
 
     def test_northcom_reuses_caddy_with_correct_paths_and_upstreams(self):
         config = self.config("northcom")
@@ -47,6 +53,8 @@ class ComposeConfigTests(unittest.TestCase):
         self.assertEqual(agent["environment"]["LISTEN"], "100.73.192.117:45876")
         self.assertEqual(agent["environment"]["HUB_URL"], "")
         self.assertEqual(agent["environment"]["TOKEN"], "")
+        self.assertEqual(config["services"]["pihole"]["environment"]
+                         ["FTLCONF_database_maxDBdays"], "30")
 
     def test_eastcom_uses_only_its_own_tailscale_ip(self):
         config = self.config("eastcom")

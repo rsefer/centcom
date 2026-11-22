@@ -35,6 +35,11 @@ services:
 
   pihole-sync:
     image: ghcr.io/lovelaze/nebula-sync:v0.11.3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       PRIMARY: "http://pihole:80|${PIHOLE_NORTHCOM_PASSWORD:?Set PIHOLE_NORTHCOM_PASSWORD}"
       REPLICAS: "http://${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18085|${PIHOLE_EASTCOM_PASSWORD:?Set PIHOLE_EASTCOM_PASSWORD}"

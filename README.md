@@ -59,6 +59,9 @@ before DNS redundancy is effective; merely running a second Pi-hole does not
 change client DNS settings. Test both resolvers and recovery before changing
 tailnet-wide DNS.
 
+Container stdout/stderr
+logs rotate at 10 MiB and keep three files; Caddy access logs also rotate.
+
 With a `compose.yaml` symlink, backups append the host's short hostname to
 the shared `BACKUP_S3_PREFIX` (default `centcom`), producing paths such as
 `centcom/northcom`, `centcom/southcom`, and `centcom/eastcom`. Each host backs up only services in

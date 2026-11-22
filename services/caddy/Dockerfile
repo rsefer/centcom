@@ -15,3 +15,4 @@ FROM caddy:2-alpine
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 COPY --from=dashboard /app/dist /usr/share/caddy
+RUN mkdir -p /var/log/caddy && chown caddy:caddy /var/log/caddy

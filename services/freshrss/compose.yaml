@@ -2,6 +2,11 @@ services:
   rss:
     image: freshrss/freshrss:latest
     container_name: rss
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - TZ=America/Chicago
       - CRON_MIN=*/5

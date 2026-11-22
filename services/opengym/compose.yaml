@@ -2,6 +2,11 @@ services:
   opengym-api:
     image: ghcr.io/duartesantos8/opengym-api:latest
     container_name: opengym-api
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - PORT=3000
       - DATA_DIR=/data
@@ -19,6 +24,11 @@ services:
   opengym-app:
     image: ghcr.io/duartesantos8/opengym-web:latest
     container_name: opengym-app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - BACKEND=opengym-api
       - PORT=3000
@@ -41,6 +51,11 @@ services:
     build:
       context: ./mcp
     container_name: opengym-mcp
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     profiles:
       - opengym-mcp
     environment:
