@@ -52,6 +52,7 @@ class ComposeConfigTests(unittest.TestCase):
         config = self.config("eastcom")
         self.assertEqual(set(config["services"]), {"pihole", "beszel-agent"})
         pihole = config["services"]["pihole"]
+        self.assertEqual(pihole["environment"]["FTLCONF_dns_listeningMode"], "ALL")
         self.assertEqual(
             {(p["host_ip"], p["published"], p["target"], p["protocol"])
              for p in pihole["ports"]},
