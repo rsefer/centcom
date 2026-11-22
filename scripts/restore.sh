@@ -63,14 +63,30 @@ if [ "$answer" != "yes" ]; then
 	exit 1
 fi
 
+echo "Validating and staging $NAME"
+STAGING="$(docker volume create)"
+cleanup() {
+	docker volume rm "$STAGING" >/dev/null
+}
+trap cleanup EXIT
+
+if ! docker run --rm \
+	-v "$STAGING":/staging \
+	-v "$(dirname "$ARCHIVE")":/backup:ro \
+	alpine sh -c 'gzip -t "$1" && tar xzf "$1" -C /staging' \
+	sh "/backup/$(basename "$ARCHIVE")"; then
+	echo "Archive validation or staging failed; target was not changed" >&2
+	exit 1
+fi
+
 if [ "$TARGET_KIND" = "path" ]; then
 	mkdir -p "$TARGET"
 fi
 
 docker run --rm \
 	-v "$TARGET":/target \
-	-v "$(dirname "$ARCHIVE")":/backup:ro \
-	alpine sh -c "find /target -mindepth 1 -delete && tar xzf '/backup/$(basename "$ARCHIVE")' -C /target"
+	-v "$STAGING":/staging:ro \
+	alpine sh -c 'find /target -mindepth 1 -delete && cp -a /staging/. /target/'
 
 echo "Restored $NAME to $TARGET"
 echo "Start the owning service again, e.g.: docker compose up -d"
