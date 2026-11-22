@@ -226,7 +226,7 @@ if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
 		BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX%/}/$host"
 	fi
 	echo "Syncing to s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX/$TIMESTAMP/"
-	if ! docker run --rm --env-file .env -v "$BACKUP_DIR":/backup:ro amazon/aws-cli \
+	if ! docker run --rm --env-file .env -v "$BACKUP_DIR":/backup:ro amazon/aws-cli:2.27.49 \
 		s3 sync /backup "s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX/$TIMESTAMP/" --no-progress; then
 		echo "✗ S3 sync failed"
 		failures="$failures s3-sync"
