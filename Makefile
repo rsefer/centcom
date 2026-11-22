@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy check-services boot-recover refresh-rss backup backup-infra test dashboard-build
+.PHONY: help setup setup-cron reload deploy check-services check-proxy boot-recover refresh-rss backup backup-infra test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -19,6 +19,9 @@ deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host]
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py
+
+check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROXY_IP=100.x.x.x
+	sh scripts/check-proxy.sh "$(DOMAIN)" "$(PROXY_IP)"
 
 test: ## Run the Python test suite
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v

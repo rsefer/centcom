@@ -22,7 +22,7 @@ def settings():
             key, separator, value = line.partition("=")
             if separator:
                 values[key.strip()] = value.strip().strip("\"'")
-    for key in ("DOMAIN", "TAILSCALE_IP", "TAILSCALE_IP_NORTHCOM", "TAILSCALE_IP_EASTCOM"):
+    for key in ("DOMAIN", "TAILSCALE_IP", "TAILSCALE_IP_NORTHCOM", "TAILSCALE_IP_SOUTHCOM", "TAILSCALE_IP_EASTCOM"):
         if os.environ.get(key):
             values[key] = os.environ[key]
     return values
@@ -95,20 +95,29 @@ def main():
     values = settings()
     domain = values.get("DOMAIN", "")
     primary = values.get("TAILSCALE_IP_NORTHCOM") or values.get("TAILSCALE_IP")
+    standby = values.get("TAILSCALE_IP_SOUTHCOM")
     secondary = values.get("TAILSCALE_IP_EASTCOM")
     if not domain or not primary:
         print("Set DOMAIN and TAILSCALE_IP_NORTHCOM (or TAILSCALE_IP) in .env", file=sys.stderr)
         return 1
     failed = False
+    resolved_proxies = []
     for server in filter(None, (primary, secondary)):
         try:
             addresses = dns_lookup(server, f"rss.{domain}")
-            if primary not in addresses:
-                raise ValueError(f"expected {primary}, got {addresses}")
-            print(f"DNS {server}: rss.{domain} resolves to {primary}")
+            allowed = {address for address in (primary, standby) if address}
+            found = set(addresses) & allowed
+            if len(found) != 1 or set(addresses) != found:
+                raise ValueError(f"expected one configured proxy address, got {addresses}")
+            proxy = found.pop()
+            resolved_proxies.append(proxy)
+            print(f"DNS {server}: rss.{domain} resolves to {proxy}")
         except (OSError, ValueError, UnicodeError) as error:
             print(f"DNS {server}: {error}", file=sys.stderr)
             failed = True
+    if len(set(resolved_proxies)) > 1:
+        print("DNS resolvers disagree on the active proxy", file=sys.stderr)
+        failed = True
     for prefix in URL_PATHS:
         url = f"https://{prefix}{domain}" + ("/admin/" if prefix == "pihole." else "/")
         try:

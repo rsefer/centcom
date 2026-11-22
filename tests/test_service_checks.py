@@ -52,6 +52,27 @@ class ServiceChecksTests(unittest.TestCase):
         with mock.patch.object(checks, "settings", return_value={}):
             self.assertEqual(checks.main(), 1)
 
+    def test_standby_is_accepted_when_both_resolvers_agree(self):
+        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+                  "TAILSCALE_IP_EASTCOM": "100.64.0.2",
+                  "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
+        with mock.patch.object(checks, "settings", return_value=values), \
+             mock.patch.object(checks, "dns_lookup", return_value=["100.64.0.3"]), \
+             mock.patch.object(checks, "check_url", return_value=200):
+            self.assertEqual(checks.main(), 0)
+
+    def test_resolver_disagreement_and_multiple_addresses_fail(self):
+        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+                  "TAILSCALE_IP_EASTCOM": "100.64.0.2",
+                  "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
+        for answers in ([["100.64.0.1"], ["100.64.0.3"]],
+                        [["100.64.0.1", "100.64.0.3"], ["100.64.0.1"]]):
+            with self.subTest(answers=answers), \
+                 mock.patch.object(checks, "settings", return_value=values), \
+                 mock.patch.object(checks, "dns_lookup", side_effect=answers), \
+                 mock.patch.object(checks, "check_url", return_value=200):
+                self.assertEqual(checks.main(), 1)
+
     def test_authentication_response_counts_as_reachable(self):
         error = urllib.error.HTTPError("https://example.com", 401, "Unauthorized", {}, None)
         opener = mock.Mock()

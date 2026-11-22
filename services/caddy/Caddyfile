@@ -11,7 +11,7 @@
 # Dashboard static server
 {$DOMAIN}, http:// {
   handle_path /status/northcom {
-    reverse_proxy status-agent:8080
+    reverse_proxy {$STATUS_NORTHCOM_UPSTREAM:status-agent:8080}
   }
   handle_path /status/southcom {
     reverse_proxy {$STATUS_SOUTHCOM_UPSTREAM}
@@ -72,7 +72,7 @@ ha.{$DOMAIN} {
   import ts_upstream home-assistant
 }
 pihole.{$DOMAIN} {
-  reverse_proxy pihole:80
+  reverse_proxy {$PIHOLE_UPSTREAM:pihole:80}
 }
 rss.{$DOMAIN} {
   reverse_proxy {$RSS_UPSTREAM}

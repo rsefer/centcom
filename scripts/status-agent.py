@@ -31,12 +31,12 @@ def backup_status():
         return {"last_success": None, "offsite": None, "error": str(error)}
 
 
-def dns_status(server, primary, domain):
+def dns_status(server, primary, domain, standby=None):
     try:
         addresses = checks.dns_lookup(server, f"rss.{domain}")
-        if primary not in addresses:
+        if len(addresses) != 1 or addresses[0] not in (primary, standby):
             return {"ok": False, "error": "Unexpected DNS answer"}
-        return {"ok": True}
+        return {"ok": True, "proxy": "primary" if primary in addresses else "standby"}
     except (OSError, ValueError, UnicodeError) as error:
         return {"ok": False, "error": str(error)}
 
@@ -50,7 +50,10 @@ def status():
     return {
         "host": os.environ["STATUS_HOST"],
         "backup": backup_status(),
-        "dns": {name: dns_status(server, primary, domain) for name, server in servers.items()},
+        "dns": {
+            name: dns_status(server, primary, domain, os.environ.get("DNS_STANDBY_PROXY"))
+            for name, server in servers.items()
+        },
     }
 
 

@@ -51,6 +51,12 @@ class StatusAgentTests(unittest.TestCase):
             self.assertFalse(agent.dns_status("100.64.0.2", "100.64.0.1",
                                               "example.com")["ok"])
 
+    def test_dns_accepts_the_standby_proxy(self):
+        with mock.patch.object(agent.checks, "dns_lookup", return_value=["100.64.0.3"]):
+            self.assertEqual(agent.dns_status("100.64.0.2", "100.64.0.1",
+                                              "example.com", "100.64.0.3"),
+                             {"ok": True, "proxy": "standby"})
+
     def test_http_endpoint_returns_current_status(self):
         server = agent.ThreadingHTTPServer(("127.0.0.1", 0), agent.Handler)
         worker = threading.Thread(target=server.serve_forever)

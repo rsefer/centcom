@@ -32,7 +32,7 @@ Each host file extends the shared service definitions under `services/`.
 | Host | Symlink target | Services |
 | --- | --- | --- |
 | northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Pi-hole sync, Beszel agent, status agent |
-| southcom | `docker-compose.southcom.yml` | Beszel, Excalidraw, FreshRSS, GoLink, openGym, status agent |
+| southcom | `docker-compose.southcom.yml` | Standby Caddy, Beszel, Excalidraw, FreshRSS, GoLink, openGym, status agent |
 | eastcom | `docker-compose.eastcom.yml` | Secondary Pi-hole, Beszel agent, status agent |
 
 For example, on northcom run `ln -s docker-compose.northcom.yml compose.yaml`
@@ -40,8 +40,9 @@ from the repository root; use each host's matching target on the other hosts.
 Leave `COMPOSE_FILE` unset. Set `TAILSCALE_IP_NORTHCOM`,
 `TAILSCALE_IP_SOUTHCOM`, and `TAILSCALE_IP_EASTCOM` to the respective hosts'
 Tailscale IPv4 addresses in the shared `.env`.
-The northcom Compose configuration derives the app upstreams from southcom's
-address. These app ports are reachable directly
+Northcom's Caddy uses southcom's app ports; southcom's standby Caddy uses the
+local app containers and eastcom's Pi-hole. Both serve the same hostnames
+using separate certificate storage. These app ports are reachable directly
 by devices allowed to connect to southcom over Tailscale, bypassing Caddy.
 Pi-hole DNS is bound to the corresponding host's Tailscale IP. Point the existing
 service DNS records at northcom after verifying the split.
@@ -133,7 +134,7 @@ make boot-recover
 - It is built inside the Caddy image (Node build stage in `services/caddy/Dockerfile`); the Pi does not need Node installed. After changing the dashboard, run `docker compose build caddy && docker compose up -d --no-deps caddy` (or `make reload`).
 - Press `⌘K` (or `Ctrl+K`) to open the service search palette. If the search narrows to one match, `Enter` opens it. Dark mode follows the OS `prefers-color-scheme`.
 - Service links derive their hostnames from the page's own hostname, so no domain is hard-coded. For local development, run `npm install && npm run dev` in `services/caddy/www`.
-- Live status polls each host's status agent every 30 seconds: agent reachability, the latest successful backup, and each Pi-hole's DNS response from that host. Agent reachability is not a full host-health check; use the Beszel link for metrics. DNS checks resolve `rss.${DOMAIN}` and verify it points to northcom.
+- Live status polls each host's status agent every 30 seconds: agent reachability, the latest successful backup, and each Pi-hole's DNS response from that host. Agent reachability is not a full host-health check; use the Beszel link for metrics. DNS checks resolve `rss.${DOMAIN}` and report whether it points to northcom or southcom.
 - Each agent exposes only these status fields on port 18086, bound to its Tailscale IP. The endpoint is unauthenticated, like the dashboard; restrict access with tailnet policy as needed. Caddy proxies the endpoints for the dashboard. No metrics history is stored.
 - Each successful backup records one latest-success timestamp and whether S3 sync was configured, in a small host-local Docker volume. The dashboard shows no backup until the next successful run after this feature is installed; an unsuccessful backup leaves the previous timestamp unchanged. A local-only backup is not an off-site backup.
 
@@ -141,6 +142,50 @@ make boot-recover
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.
 - On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
+
+## Manual proxy failover
+
+The standby proxy runs on southcom but DNS normally points to northcom. Failover
+is **manual**, not automatic. Southcom and its applications, eastcom's Pi-hole,
+Tailscale, Route 53 access, and a working client DNS resolver remain necessary.
+The dashboard cannot reach northcom's agent during an outage; the northcom DNS
+check will fail until it returns. Eastcom's Pi-hole web interface is a separate
+replica, not northcom's administrative session. Southcom stores and renews its
+own public TLS certificates using the existing Route 53 DNS challenge credentials.
+
+Before an outage, from a tailnet-connected client with `curl`, run
+`make check-proxy DOMAIN=<domain> PROXY_IP=<southcom-tailscale-ip>`. This keeps
+the original HTTPS hostnames and validates certificates while directing requests
+to southcom without changing DNS. Initial certificate issuance can take several
+minutes. To include the optional MCP route, set `CHECK_MCP=1` before the command.
+Redirects, authentication challenges and an MCP method-not-allowed
+response count as reachable, not proof of application health.
+
+If northcom fails:
+
+1. Verify southcom and eastcom are reachable and use the direct proxy check
+   above. Verify the client uses eastcom for DNS; some clients do not
+   immediately try their secondary resolver.
+2. In the Route 53 hosted zone, change the dashboard A record (`<domain>`)
+   and wildcard service A record (`*.<domain>`) from northcom's Tailscale IP
+   to southcom's Tailscale IP. Also change any exact service A records that
+   point to northcom: exact records take precedence over the wildcard. Leave
+   unrelated records alone; check for CNAMEs or local Pi-hole overrides if a
+   service still resolves elsewhere. Do not publish both proxy IPs as a
+   substitute for health-aware failover.
+3. Query eastcom directly with `dig @<eastcom-tailscale-ip> rss.<domain> A`,
+   then verify the dashboard and applications from a tailnet client. DNS TTL,
+   resolver caches and existing connections can delay recovery. If resolution
+   is stale, use the direct proxy check while caches expire.
+4. Once northcom is healthy, check it directly with `make check-proxy
+   DOMAIN=<domain> PROXY_IP=<northcom-tailscale-ip>`, reverse the same Route 53
+   changes, and verify both resolvers and service URLs with
+   `make check-services`. The command reports a failed northcom resolver
+   during an outage even when southcom is serving traffic.
+
+This does not make southcom's applications redundant and does not protect
+against a southcom, Tailscale, or shared network outage. Avoid restoring one
+host's `caddy_data` volume onto the other while either Caddy is running.
 
 ## Non-disruptive outage drills
 
@@ -150,7 +195,7 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 
 | Unavailable | Expected effect | Recovery starting point |
 | --- | --- | --- |
-| northcom | Dashboard and Caddy routes are unavailable; primary Pi-hole is unavailable. Eastcom can answer DNS if clients are configured to use it. | Connect to northcom by IP; inspect Docker, Tailscale, Caddy and `boot-recover.log`. |
+| northcom | Primary Caddy and Pi-hole are unavailable. Eastcom can answer DNS if clients are configured to use it; switch DNS manually to use southcom's proxy. | Follow Manual proxy failover; connect to northcom by IP and inspect Docker, Tailscale, Caddy and `boot-recover.log`. |
 | southcom | Beszel hub, FreshRSS, Excalidraw, GoLink and openGym are unavailable; Caddy and Pi-hole can remain available. | Connect to southcom by IP and inspect its Compose services and `boot-recover.log`. |
 | eastcom | Secondary Pi-hole and its Beszel agent are unavailable; clients using northcom can still resolve DNS. | Connect to eastcom by IP, inspect Pi-hole and verify synchronization after recovery. |
 | Tailscale | Tailnet IPs and the Caddy service URLs are unreachable from affected devices; local network access may still work. | Check `tailscale status` locally and on the host. Use a known LAN address, router DHCP lease, or a directly attached console; a Tailscale IP alone cannot bypass a Tailscale outage. |
@@ -162,7 +207,8 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 2. From a tailnet-connected client with `dig`, query each resolver explicitly:
    `dig @<northcom-tailscale-ip> rss.<domain> A` and
    `dig @<eastcom-tailscale-ip> rss.<domain> A`. Both should return northcom's
-   Tailscale IP. This bypasses the client's configured DNS resolver.
+   Tailscale IP during normal operation or southcom's during manual failover.
+   This bypasses the client's configured DNS resolver.
 3. Verify IP-based SSH without depending on name resolution:
    `ssh -o HostName=<tailscale-ip> -o HostKeyAlias=<host>.local <host>.local`.
    This preserves the existing SSH alias's user, identity and host-key checks.

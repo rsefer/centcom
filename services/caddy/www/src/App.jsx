@@ -93,7 +93,7 @@ function StatusCard({ host, data, error }) {
 					<Text size="2">Last backup: {lastBackup}</Text>
 					{Object.entries(data.dns).map(([name, result]) => (
 						<Text key={name} size="2">
-							{name === 'primary' ? 'Primary' : 'Secondary'} DNS: {result.ok ? 'responding' : `failed (${result.error})`}
+							{name === 'primary' ? 'Primary' : 'Secondary'} DNS: {result.ok ? `responding${result.proxy ? ` (${result.proxy} proxy)` : ''}` : `failed (${result.error})`}
 						</Text>
 					))}
 				</Flex>

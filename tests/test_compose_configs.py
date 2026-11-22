@@ -71,6 +71,16 @@ class ComposeConfigTests(unittest.TestCase):
     def test_southcom_reuses_service_paths_and_binds_to_tailnet(self):
         config = self.config("southcom")
         services = config["services"]
+        caddy = services["caddy"]
+        self.assertEqual({p["host_ip"] for p in caddy["ports"]}, {"100.97.91.90"})
+        self.assertEqual(caddy["environment"]["PIHOLE_UPSTREAM"], "100.127.122.57:18085")
+        self.assertEqual(caddy["environment"]["STATUS_NORTHCOM_UPSTREAM"], "100.73.192.117:18086")
+        self.assertEqual(caddy["environment"]["STATUS_SOUTHCOM_UPSTREAM"], "status-agent:8080")
+        self.assertEqual(caddy["environment"]["STATUS_EASTCOM_UPSTREAM"], "100.127.122.57:18086")
+        self.assertEqual(caddy["environment"]["RSS_UPSTREAM"], "rss:80")
+        self.assertEqual(caddy["build"]["context"], str(ROOT / "services/caddy"))
+        self.assertEqual({v["target"]: v["source"] for v in caddy["volumes"]}["/etc/caddy/Caddyfile"],
+                         str(ROOT / "services/caddy/Caddyfile"))
         rss = services["rss"]
         mounts = {v["target"]: v["source"] for v in rss["volumes"]}
         self.assertEqual(mounts["/var/www/FreshRSS/data"], str(ROOT / "data"))
