@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-cron reload deploy boot-recover refresh-rss backup backup-infra
+.PHONY: help setup setup-cron reload deploy check-services boot-recover refresh-rss backup backup-infra
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -16,6 +16,9 @@ reload: ## Pull, build, and restart the full stack (run on the Pi)
 
 deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host] [BRANCH=main]
 	./scripts/remote-deploy.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)"
+
+check-services: ## Check DNS and service URLs without changing the stack
+	python3 scripts/check-services.py
 
 boot-recover: ## Run the boot recovery routine manually (run on the Pi)
 	./scripts/boot-recover.sh

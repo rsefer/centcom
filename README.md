@@ -75,7 +75,7 @@ resolvers and the HTTPS dashboard and service URLs. Python 3 and outbound
 tailnet access are required on that host. A failed check fails the deployment
 command but does not roll back hosts already updated. HTTP redirects and
 authentication challenges count as reachable, not proof of application health.
-Run `python3 scripts/check-services.py` on a host to repeat the checks.
+Run `make check-services` on a configured host to repeat the checks.
 
 For another com, add its host Compose file, configure its matching Tailscale
 hostname and SSH access, and install the repository, `.env`, and `compose.yaml`
@@ -132,6 +132,39 @@ make boot-recover
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.
 - On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
+
+## Non-disruptive outage drills
+
+These are diagnostic exercises, not automatic failover tests. Run them while
+the system is healthy to establish a baseline; they do not stop services or
+change DNS. To test an actual outage, arrange a maintenance window separately.
+
+| Unavailable | Expected effect | Recovery starting point |
+| --- | --- | --- |
+| northcom | Dashboard and Caddy routes are unavailable; primary Pi-hole is unavailable. Eastcom can answer DNS if clients are configured to use it. | Connect to northcom by IP; inspect Docker, Tailscale, Caddy and `boot-recover.log`. |
+| southcom | Beszel hub, FreshRSS, Excalidraw, GoLink and openGym are unavailable; Caddy and Pi-hole can remain available. | Connect to southcom by IP and inspect its Compose services and `boot-recover.log`. |
+| eastcom | Secondary Pi-hole and its Beszel agent are unavailable; clients using northcom can still resolve DNS. | Connect to eastcom by IP, inspect Pi-hole and verify synchronization after recovery. |
+| Tailscale | Tailnet IPs and the Caddy service URLs are unreachable from affected devices; local network access may still work. | Check `tailscale status` locally and on the host. Use a known LAN address, router DHCP lease, or a directly attached console; a Tailscale IP alone cannot bypass a Tailscale outage. |
+| DNS | Service names and SSH aliases may fail even when hosts are running. | Query each Pi-hole by IP, use SSH and HTTPS by IP as below, or temporarily use a working resolver on the affected client. Restore the intended DNS configuration afterward. |
+
+1. On a configured host, run `make check-services`. It checks each configured
+   Pi-hole and the HTTPS routes. This is a baseline, not a simulation of a
+   disconnected host.
+2. From a tailnet-connected client with `dig`, query each resolver explicitly:
+   `dig @<northcom-tailscale-ip> rss.<domain> A` and
+   `dig @<eastcom-tailscale-ip> rss.<domain> A`. Both should return northcom's
+   Tailscale IP. This bypasses the client's configured DNS resolver.
+3. Verify IP-based SSH without depending on name resolution:
+   `ssh -o HostName=<tailscale-ip> -o HostKeyAlias=<host>.local <host>.local`.
+   This preserves the existing SSH alias's user, identity and host-key checks.
+   Repeat for each host; the IPs are recorded in the shared `.env`.
+4. Verify HTTPS without DNS using
+   `curl --resolve <domain>:443:<northcom-tailscale-ip> https://<domain>/`.
+   The hostname remains in the URL so TLS certificate validation still works.
+5. To rehearse a host or network outage without disrupting it, use the table
+   above to identify the missing components and recovery path. Confirm that
+   the LAN address or physical console and SSH credentials are available
+   before an actual incident; do not assume DNS or Tailscale is working.
 
 ## Backups
 - `scripts/backup.sh` backs up persistent data for the host's configured Compose services to a timestamped directory under `~/centcom-backups/`, prunes backup directories at least 100 days old based on their modification time, and syncs each new backup to S3. Manual runs do not reduce the retention period. `scripts/setup-cron.sh` installs a daily 3:15 AM cron job in each host's local time; logs go to `~/centcom/backup.log`. Deployments ensure the jobs are installed. Run one manually with `make backup` on the host. Missing required data or failed exports make the backup fail without uploading or pruning older backups; check the log for failures. A failed S3 sync also prevents local pruning.
