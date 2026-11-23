@@ -94,7 +94,6 @@ checks = ["deploy", "failover"]
 title = "Karakeep"
 icon = "images/karakeep.svg"
 dashboard = "primary"
-path = "/api/health"
 container = "karakeep:3000"
 placement = [{ host = "southcom", port = 18087 }]
 checks = ["deploy", "failover"]
