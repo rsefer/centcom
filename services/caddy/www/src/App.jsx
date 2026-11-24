@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { backupStatus } from './backup-status.js';
+import { selfHealStatus } from './selfheal-status.js';
 import { statusSummary } from './status-summary.js';
 import './service-grid.css';
 import registry from './services.json';
@@ -123,6 +124,7 @@ function useApplicationStatus() {
 
 function StatusCard({ host, data, error }) {
 	const backup = backupStatus(data?.backup);
+	const selfheal = selfHealStatus(data?.selfheal);
 
 	return (
 		<Card size="2">
@@ -140,6 +142,15 @@ function StatusCard({ host, data, error }) {
 							{backup.state === 'overdue' ? 'Overdue (>48h)' : backup.state === 'current' ? 'Current' : 'Unknown'}
 						</Badge>
 					</Flex>
+					<Flex align="center" gap="2" wrap="wrap">
+						<Text size="2">Self-heal: {selfheal.detail}</Text>
+						<Badge color={selfheal.state === 'attention' ? 'red' : selfheal.state === 'ok' ? 'green' : 'amber'}>
+							{selfheal.state === 'attention' ? 'Needs attention' : selfheal.state === 'ok' ? 'Stable' : selfheal.state === 'rebooted' ? 'Rebooted <24h' : 'Unknown'}
+						</Badge>
+					</Flex>
+					{selfheal.events.slice(-3).map((line) => (
+						<Text key={line} size="1" color="gray" style={{ fontFamily: 'monospace' }}>{line}</Text>
+					))}
 					{Object.entries(data.dns).map(([name, result]) => (
 						<Text key={name} size="2">
 							{name === 'primary' ? 'Primary' : 'Secondary'} DNS: {result.ok ? `responding${result.proxy ? ` (${result.proxy} proxy)` : ''}` : `failed (${result.error})`}

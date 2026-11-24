@@ -88,6 +88,13 @@ class ComposeConfigTests(unittest.TestCase):
                        self.config(host)["services"]["status-agent"]["volumes"]}
             self.assertTrue({"/app/services.py", "/app/services.toml"} <= targets, host)
 
+    def test_status_agents_mount_selfheal_state_read_only(self):
+        for host in ("northcom", "southcom", "eastcom"):
+            volumes = {v["target"]: v for v in
+                       self.config(host)["services"]["status-agent"]["volumes"]}
+            self.assertEqual(volumes["/selfheal"]["source"], "/var/lib/centcom-selfheal", host)
+            self.assertTrue(volumes["/selfheal"]["read_only"], host)
+
     def test_eastcom_uses_only_its_own_tailscale_ip(self):
         config = self.config("eastcom")
         self.assertEqual(set(config["services"]), {"pihole", "beszel-agent", "status-agent"})

@@ -33,11 +33,26 @@ class StatusAgentTests(unittest.TestCase):
                 marker.write_text('{"last_success": 42, "offsite": true}')
                 self.assertIn("error", agent.backup_status())
 
+    def test_selfheal_status_reports_uptime_and_recent_events(self):
+        with tempfile.TemporaryDirectory() as temp:
+            uptime = Path(temp) / "uptime"
+            uptime.write_text("93784.12 1000.00\n")
+            with mock.patch.object(agent, "SELFHEAL_DIR", Path(temp)), \
+                 mock.patch.object(agent, "UPTIME_FILE", uptime):
+                self.assertEqual(agent.selfheal_status(), {"uptime_seconds": 93784, "events": []})
+                lines = [f"2026-11-24 07:0{n}:00 event {n}" for n in range(7)]
+                (Path(temp) / "events.log").write_text("\n".join(lines) + "\n")
+                self.assertEqual(agent.selfheal_status()["events"], lines[-5:])
+            with mock.patch.object(agent, "SELFHEAL_DIR", Path(temp) / "missing"), \
+                 mock.patch.object(agent, "UPTIME_FILE", Path(temp) / "none"):
+                self.assertEqual(agent.selfheal_status(), {"uptime_seconds": None, "events": []})
+
     def test_status_checks_both_resolvers_and_reports_failure(self):
         env = {"STATUS_HOST": "northcom", "DOMAIN": "example.com",
                "DNS_PRIMARY": "100.64.0.1", "DNS_SECONDARY": "100.64.0.2"}
         with mock.patch.dict(os.environ, env), \
              mock.patch.object(agent, "backup_status", return_value={"last_success": None}), \
+             mock.patch.object(agent, "selfheal_status", return_value={"events": []}), \
              mock.patch.object(agent.checks, "dns_lookup",
                                side_effect=[["100.64.0.1"], OSError("timeout")]):
             status = agent.status()

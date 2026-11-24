@@ -16,6 +16,8 @@ spec = importlib.util.spec_from_file_location("check_services", Path(__file__).w
 checks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checks)
 BACKUP_MARKER = Path("/state/last-backup.json")
+SELFHEAL_DIR = Path("/selfheal")
+UPTIME_FILE = Path("/proc/uptime")
 
 
 def backup_status():
@@ -31,6 +33,23 @@ def backup_status():
         return {"last_success": None, "offsite": None}
     except (OSError, ValueError, TypeError, KeyError) as error:
         return {"last_success": None, "offsite": None, "error": str(error)}
+
+
+def selfheal_status():
+    result = {"uptime_seconds": None, "events": []}
+    try:
+        result["uptime_seconds"] = int(float(UPTIME_FILE.read_text().split()[0]))
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        lines = (SELFHEAL_DIR / "events.log").read_text(errors="replace").splitlines()
+    except FileNotFoundError:
+        return result
+    except OSError as error:
+        result["error"] = str(error)
+        return result
+    result["events"] = [line[:200] for line in lines[-5:]]
+    return result
 
 
 def dns_status(server, primary, domain, standby=None):
@@ -52,6 +71,7 @@ def status():
     return {
         "host": os.environ["STATUS_HOST"],
         "backup": backup_status(),
+        "selfheal": selfheal_status(),
         "dns": {
             name: dns_status(server, primary, domain, os.environ.get("DNS_STANDBY_PROXY"))
             for name, server in servers.items()

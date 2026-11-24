@@ -21,6 +21,7 @@ services:
       - ../../scripts/services.py:/app/services.py:ro
       - ../../services.toml:/app/services.toml:ro
       - status_data:/state:ro
+      - /var/lib/centcom-selfheal:/selfheal:ro
     networks:
       - caddy_net
     restart: unless-stopped
