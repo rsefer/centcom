@@ -1,12 +1,18 @@
 .DEFAULT_GOAL := help
 
-.PHONY: policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
 setup: ## Install Docker and cron jobs on the host (run on the Pi)
 	./scripts/setup.sh
+
+new-host: ## Provision a fresh Pi as a centcom host over SSH: make new-host HOST=eastcom [ADDR=raspberrypi.local] [SSH_USER=pi]
+	SSH_USER="$(SSH_USER)" ./scripts/new-host.sh "$(HOST)" $(ADDR)
+
+provision: ## Turn this Pi into a centcom host (run on the Pi): make provision HOST=eastcom [REBOOT=1]
+	./scripts/provision-host.sh "$(HOST)" $(if $(REBOOT),--reboot)
 
 harden: ## Enable NTP, watchdog, log2ram and the self-heal timer (run on the Pi, then reboot)
 	./scripts/harden-host.sh

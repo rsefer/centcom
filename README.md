@@ -102,22 +102,55 @@ are not compared by digest across hosts, and hashes assume the same
 drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and
 skips the symlink expectation like `make deploy`.
 
-For another com, add its host Compose file, configure its matching Tailscale
-hostname and SSH access, and install the repository, `.env`, and `compose.yaml`
-symlink on that Pi before deploying. The one-time migration stashes on the two
-existing Pis are retained; inspect them with `git stash list` on each host.
+### Adding or replacing a host
+
+`make new-host HOST=<name>` turns a freshly flashed Pi into a working host from
+your workstation. It is also how you replace a dead Pi (for example after SD card
+corruption); a replacement needs no data restore for hosts whose state is
+rebuilt from the repo (eastcom's Pi-hole is refilled by northcom's `pihole-sync`).
+
+Before running it:
+
+1. A new host needs `docker-compose.<name>.yml` and an entry in `hosts` in
+   `services.toml`; commit and push to `main`. A replacement already has both.
+2. Flash Raspberry Pi OS Lite with Raspberry Pi Imager, setting a login user,
+   your SSH key (or a password) and Wi-Fi/Ethernet. The hostname does not
+   matter; the script sets it.
+3. When replacing a host, delete the old machine in the Tailscale admin
+   console first, or the new one registers as `<name>-1`.
+4. Optional: a reusable auth key tagged `tag:centcom` as `TS_AUTHKEY` in `.env`
+   skips the browser login. `LAN_SUBNET` overrides the advertised subnet
+   (default `192.168.4.0/22`).
+5. The Pi must be able to clone and fetch this repository, as the other hosts do.
+
+Then run `make new-host HOST=eastcom` (add `ADDR=raspberrypi.local` while the Pi
+still has its default name, and `SSH_USER=<login>` if it differs from yours). It:
+
+- clones the repo to `~/centcom` and copies your `.env` (mode 600);
+- runs `scripts/provision-host.sh` on the Pi, which sets the hostname, selects
+  the `compose.yaml` symlink, installs Docker and Tailscale, joins the tailnet as
+  `tag:centcom` with the exit node and subnet route, records the node's Tailscale
+  IP as `TAILSCALE_IP_<HOST>` in `.env`, runs `make harden`, creates `caddy_net`,
+  installs cron and starts the stack;
+- reboots the Pi, waits for it, and runs `make check-services` from it. The reboot
+  proves that log2ram and the `@reboot` recovery job work.
+
+Each step is idempotent, so a failed run can simply be repeated. If the new
+Tailscale IP differs from `.env`, the script updates your local `.env` and the
+other hosts' `.env` files, and tells you to run `make deploy` so Caddy and
+`pihole-sync` pick it up. Anything configured by IP outside the repo (Tailscale
+DNS nameservers, client DNS, the Beszel hub's system entry) stays manual. To run
+the on-Pi half alone, use `make provision HOST=<name> [REBOOT=1]` after copying
+`.env` and cloning the repo yourself.
 
 To advertise the same subnet and an exit node from each Pi, run
 `sh scripts/configure-routing.sh 192.168.4.0/22` on each host and approve both
 devices' routes and exit nodes in the Tailscale admin console. Subnet routers
 can provide failover; clients select exit nodes separately.
 
-For a fresh additional Pi, `./scripts/setup.sh --bootstrap-only` installs Docker
-and Tailscale without deploying services, configuring subnet routes, or adding
-the single-host cron jobs. Run it as the intended login user (not as root),
-then run `sudo tailscale up`, authenticate in the browser, and reconnect to
-pick up Docker group membership. Service placement and backup restoration
-must be configured separately before starting the stack.
+For manual control, `./scripts/setup.sh --bootstrap-only` installs only Docker and
+Tailscale on a fresh Pi, without deploying services, configuring subnet routes or
+adding the single-host cron jobs. Run it as the intended login user (not root).
 
 ### Tailscale policy
 
@@ -173,6 +206,8 @@ does these things:
 - Installs log2ram from the azlux repository with `SIZE=128M` (override with
   `LOG2RAM_SIZE=`). It keeps `/var/log` in RAM and flushes it hourly and at
   shutdown; a power loss loses up to an hour of host logs.
+- Makes the systemd journal persistent (RAM-backed under log2ram, flushed hourly
+  and at shutdown), so `journalctl -b -1` shows the previous boot after a crash.
 - Installs `scripts/self-heal.sh` as `/usr/local/sbin/centcom-self-heal` with a
   systemd timer (every minute) and sets `kernel.panic=10`, `kernel.panic_on_oops=1`
   so a kernel panic reboots instead of hanging. Re-run `make harden` after

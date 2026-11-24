@@ -50,6 +50,17 @@ else
   echo "SIZE=$LOG2RAM_SIZE" | sudo tee -a /etc/log2ram.conf > /dev/null
 fi
 
+# Keep the journal across reboots. With log2ram it lives in RAM and is flushed
+# hourly and at shutdown, so `journalctl -b -1` works after a clean reboot and
+# shows everything up to the last flush after a crash. Without a persistent
+# journal there is nothing to read after a crash-and-reboot.
+sudo mkdir -p /var/log/journal /etc/systemd/journald.conf.d
+sudo tee /etc/systemd/journald.conf.d/10-centcom-persistent.conf > /dev/null <<'EOF'
+[Journal]
+Storage=persistent
+EOF
+sudo systemctl restart systemd-journald
+
 # --- Self-healing ------------------------------------------------------------
 # scripts/self-heal.sh runs every minute as root: bounces the NIC, restarts
 # tailscaled and unhealthy containers, and reboots as a last resort. It is
