@@ -15,6 +15,11 @@ class HardenHostTests(unittest.TestCase):
         for expected in ("10-watchdog.conf", "timedatectl set-ntp true", "install -y log2ram"):
             self.assertIn(expected, text)
 
+    def test_installs_self_heal_timer_and_panic_reboot(self):
+        text = SCRIPT.read_text()
+        for expected in ("centcom-self-heal.timer", "self-heal.sh", "kernel.panic = 10"):
+            self.assertIn(expected, text)
+
 
 if __name__ == "__main__":
     unittest.main()

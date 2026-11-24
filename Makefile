@@ -8,7 +8,7 @@ help: ## Show available targets
 setup: ## Install Docker and cron jobs on the host (run on the Pi)
 	./scripts/setup.sh
 
-harden: ## Enable NTP, hardware watchdog and log2ram (run on the Pi, then reboot)
+harden: ## Enable NTP, watchdog, log2ram and the self-heal timer (run on the Pi, then reboot)
 	./scripts/harden-host.sh
 
 setup-cron: ## Install or verify the cron jobs

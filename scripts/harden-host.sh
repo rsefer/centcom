@@ -1,5 +1,6 @@
 #!/bin/sh
-# Host hardening for a headless Pi: NTP, hardware watchdog check, log2ram.
+# Host hardening for a headless Pi: NTP, hardware watchdog check, log2ram,
+# kernel panic reboot and the self-heal timer.
 # Idempotent. Run on the Pi as the login user (uses sudo). Reboot afterwards
 # so log2ram takes over /var/log.
 
@@ -49,6 +50,44 @@ else
   echo "SIZE=$LOG2RAM_SIZE" | sudo tee -a /etc/log2ram.conf > /dev/null
 fi
 
+# --- Self-healing ------------------------------------------------------------
+# scripts/self-heal.sh runs every minute as root: bounces the NIC, restarts
+# tailscaled and unhealthy containers, and reboots as a last resort. It is
+# installed as a root-owned copy so a writable repo can never run as root;
+# re-run this script to update it.
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+sudo install -m 0755 -o root -g root "$SCRIPT_DIR/self-heal.sh" /usr/local/sbin/centcom-self-heal
+sudo tee /etc/systemd/system/centcom-self-heal.service > /dev/null <<'EOF'
+[Unit]
+Description=centcom self-heal check
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/centcom-self-heal
+TimeoutStartSec=300
+EOF
+sudo tee /etc/systemd/system/centcom-self-heal.timer > /dev/null <<'EOF'
+[Unit]
+Description=Run the centcom self-heal check every minute
+
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+EOF
+# A kernel panic or oops reboots after 10 s instead of hanging until power is cut.
+sudo tee /etc/sysctl.d/90-centcom-panic.conf > /dev/null <<'EOF'
+kernel.panic = 10
+kernel.panic_on_oops = 1
+EOF
+sudo sysctl -p /etc/sysctl.d/90-centcom-panic.conf > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now centcom-self-heal.timer
+
 # --- Report ------------------------------------------------------------------
 echo
 echo "Time:     $(timedatectl show -p NTPSynchronized --value 2>/dev/null | sed 's/^yes$/synchronized/;s/^no$/NOT synchronized yet/')"
@@ -57,4 +96,5 @@ if [ -e /dev/watchdog ]; then
 else
   echo "Watchdog: /dev/watchdog missing; the kernel has no watchdog device on this host" >&2
 fi
+echo "Self-heal: $(systemctl is-active centcom-self-heal.timer); events in /var/lib/centcom-selfheal/events.log"
 echo "log2ram:  SIZE=$LOG2RAM_SIZE (active after reboot; check with 'df -h /var/log')"

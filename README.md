@@ -163,7 +163,7 @@ exit node; clients pick one in their Tailscale app.
 ### Host hardening
 
 `make harden` (run on each Pi as the login user, then reboot) is idempotent and
-does three things:
+does these things:
 
 - Enables `systemd-timesyncd` NTP. Pis have no RTC, and a wrong clock breaks TLS
   and Tailscale.
@@ -173,10 +173,39 @@ does three things:
 - Installs log2ram from the azlux repository with `SIZE=128M` (override with
   `LOG2RAM_SIZE=`). It keeps `/var/log` in RAM and flushes it hourly and at
   shutdown; a power loss loses up to an hour of host logs.
+- Installs `scripts/self-heal.sh` as `/usr/local/sbin/centcom-self-heal` with a
+  systemd timer (every minute) and sets `kernel.panic=10`, `kernel.panic_on_oops=1`
+  so a kernel panic reboots instead of hanging. Re-run `make harden` after
+  changing the script.
 
 log2ram does not cover Docker container logs or Pi-hole's query database, which
 live under `/var/lib/docker`. Verify afterwards with `df -h /var/log`
 (`log2ram` filesystem), `timedatectl`, and `systemctl show -p RuntimeWatchdogUSec` (1min).
+
+### Self-healing
+
+The `centcom-self-heal` timer probes the default gateway, the internet (1.1.1.1,
+9.9.9.9) and Tailscale (`BackendState` Running and `Self.Online`). The hardware
+watchdog only catches a hung kernel; this catches a host that is up but off the
+network. After consecutive failed minutes:
+
+| Minutes | Gateway down | Tailscale down (network fine) |
+| --- | --- | --- |
+| 3 | Bounce the default interface | Restart `tailscaled` |
+| 6 | Reload the USB NIC driver (`smsc95xx`/`lan78xx`) | Bounce the NIC, restart `tailscaled` |
+| 12 | Save diagnostics, then reboot | Same |
+
+- Internet down with the gateway reachable is logged as `wan` and never acted on.
+- At most 3 consecutive reboot attempts; the counter resets after 10 healthy
+  minutes. While the outage lasts, a reboot is retried every 30 minutes.
+- Containers whose healthcheck stays `unhealthy` for 5 minutes are restarted.
+- Under-voltage and throttle flags (`vcgencmd get_throttled`) are logged on change.
+- `/var/lib/centcom-selfheal/events.log` records every action and
+  `diag-*.log` (last 5) holds the kernel, Tailscale and network state captured
+  before a reboot. These live on disk, not under log2ram, so they survive a
+  power cut.
+- Dry run: `sudo SELFHEAL_DRY_RUN=1 /usr/local/sbin/centcom-self-heal` logs actions
+  without performing them.
 
 ## Single-host installation
 1. Boot Raspberry PI using default Raspian image
