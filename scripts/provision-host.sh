@@ -9,7 +9,8 @@
 #   --reboot   reboot at the end so log2ram takes over /var/log and the
 #              @reboot recovery job is exercised.
 # Optional .env keys: TS_AUTHKEY (skips the browser login), LAN_SUBNET
-# (default 192.168.4.0/22).
+# (default 192.168.4.0/22), DNS_FAILOVER_HOST (host that runs the DNS failover
+# timer; default: any host without a Pi-hole in its compose file).
 
 set -eu
 
@@ -125,6 +126,21 @@ echo "==> Stack"
 docker network inspect caddy_net > /dev/null 2>&1 || docker network create caddy_net > /dev/null
 ./scripts/setup-cron.sh
 ./scripts/reload.sh
+
+echo "==> DNS failover timer"
+failover_host="$(env_value DNS_FAILOVER_HOST)"
+if [ -n "$failover_host" ]; then
+  [ "$failover_host" = "$HOST" ] && RUN_FAILOVER=true || RUN_FAILOVER=false
+elif grep -q '^  pihole:' "docker-compose.$HOST.yml"; then
+  RUN_FAILOVER=false
+else
+  RUN_FAILOVER=true
+fi
+if [ "$RUN_FAILOVER" = true ]; then
+  ./scripts/install-dns-failover.sh
+else
+  echo "Not the DNS failover host; skipped."
+fi
 
 echo "==> $HOST provisioned at $IP"
 if [ "$REBOOT" = true ]; then

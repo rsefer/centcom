@@ -131,7 +131,8 @@ still has its default name, and `SSH_USER=<login>` if it differs from yours). It
   the `compose.yaml` symlink, installs Docker and Tailscale, joins the tailnet as
   `tag:centcom` with the exit node and subnet route, records the node's Tailscale
   IP as `TAILSCALE_IP_<HOST>` in `.env`, runs `make harden`, creates `caddy_net`,
-  installs cron and starts the stack;
+  installs cron and starts the stack, and on the DNS failover host (see
+  [DNS failover](#dns-failover)) installs the `centcom-dns-failover` timer;
 - reboots the Pi, waits for it, and runs `make check-services` from it. The reboot
   proves that log2ram and the `@reboot` recovery job work.
 
@@ -211,6 +212,13 @@ nameservers in step:
 Setup: create a Tailscale OAuth client with the `dns` scope (Read + Write) and set
 `TS_DNS_OAUTH_CLIENT_ID/SECRET`, `SMTP_HOST/PORT/USERNAME/PASSWORD`, `DNS_ALERT_FROM` and `DNS_ALERT_TO`
 in southcom's `.env`. Logs: `journalctl -u centcom-dns-failover`.
+
+`make provision` / `make new-host` install the timer automatically on any host
+whose compose file has no Pi-hole (currently only southcom). Set
+`DNS_FAILOVER_HOST=<host>` in `.env` to pin it to one host, so a second
+non-Pi-hole host never runs a competing checker. Replacing southcom therefore
+restores the timer, provided the shared `.env` carries the `TS_DNS_OAUTH_*`,
+`SMTP_*` and `DNS_ALERT_*` keys.
 
 ### Host hardening
 
