@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -28,6 +28,9 @@ deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host]
 
 check-hosts: ## Report drift between hosts (read-only): make check-hosts [HOST=host] [BRANCH=main]
 	python3 scripts/check-hosts.py "$(or $(HOST),all)" "$(or $(BRANCH),main)"
+
+sync-tailscale-ips: ## Update TAILSCALE_IP_* in every host's .env from tailscale (dry run unless APPLY=1)
+	python3 scripts/sync-tailscale-ips.py $(if $(APPLY),--apply)
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py

@@ -64,7 +64,13 @@ ssh -t $SSH_OPTS "$TARGET" "cd ~/centcom && ./scripts/provision-host.sh '$HOST' 
 
 echo "==> Waiting for the reboot"
 ssh $SSH_OPTS -O exit "$TARGET" > /dev/null 2>&1 || true
-sleep 15
+# Wait for the Pi to go down first; sshd stays up while Docker stops.
+tries=0
+while ssh $SSH_OPTS -o ConnectTimeout=5 "$TARGET" true > /dev/null 2>&1; do
+  tries=$((tries + 1))
+  [ "$tries" -ge 30 ] && break
+  sleep 5
+done
 tries=0
 until ssh $SSH_OPTS -o ConnectTimeout=5 "$TARGET" true > /dev/null 2>&1; do
   tries=$((tries + 1))
@@ -75,7 +81,13 @@ until ssh $SSH_OPTS -o ConnectTimeout=5 "$TARGET" true > /dev/null 2>&1; do
   sleep 10
 done
 
-NEW_IP="$(remote 'tailscale ip -4 | head -n 1')"
+NEW_IP=""
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  NEW_IP="$(remote 'tailscale ip -4 2> /dev/null | head -n 1' 2> /dev/null || true)"
+  [ -n "$NEW_IP" ] && break
+  sleep 5
+done
+[ -n "$NEW_IP" ] || { echo "$HOST is back but Tailscale has no IP yet." >&2; exit 1; }
 OLD_IP="$(sed -n "s/^$KEY=//p" .env | tail -n 1)"
 IP_CHANGED=false
 if [ "$NEW_IP" != "$OLD_IP" ]; then
@@ -89,15 +101,9 @@ if [ "$NEW_IP" != "$OLD_IP" ]; then
   else
     echo "$KEY=$NEW_IP" >> .env
   fi
-  for compose in docker-compose.*.yml; do
-    other="${compose#docker-compose.}"
-    other="${other%.yml}"
-    [ "$other" = "docker-compose" ] && continue
-    [ "$other" = "$HOST" ] && continue
-    ssh -o BatchMode=yes -o ConnectTimeout=10 "$other.local" \
-      "sed -i 's|^$KEY=.*|$KEY=$NEW_IP|' ~/centcom/.env" ||
-      echo "Could not update .env on $other; set $KEY=$NEW_IP there." >&2
-  done
+  echo "==> Syncing Tailscale IPs to every host's .env and redeploying"
+  python3 scripts/sync-tailscale-ips.py --deploy --user "${SSH_USER:-$(id -un)}" ||
+    echo "IP sync failed; run 'make sync-tailscale-ips APPLY=1' and 'make deploy' by hand." >&2
 fi
 
 echo "==> Checking DNS and service URLs from $HOST"
@@ -109,7 +115,6 @@ echo "$HOST is provisioned and rebooted cleanly at $NEW_IP."
 echo "Remaining by hand:"
 echo "  - Approve $HOST's subnet route and exit node in the Tailscale admin console if its tag is missing."
 if [ "$IP_CHANGED" = true ]; then
-  echo "  - Run 'make deploy' so every host picks up the new $KEY."
   echo "  - Update $HOST's address anywhere it is configured by IP (Tailscale DNS nameservers, client DNS, Beszel hub system)."
 fi
 echo "  - Run 'make check-hosts' to confirm no drift."
