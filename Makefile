@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -31,6 +31,12 @@ check-hosts: ## Report drift between hosts (read-only): make check-hosts [HOST=h
 
 sync-tailscale-ips: ## Update TAILSCALE_IP_* in every host's .env from tailscale (dry run unless APPLY=1)
 	python3 scripts/sync-tailscale-ips.py $(if $(APPLY),--apply)
+
+check-tailscale-dns: ## Check Tailscale DNS nameservers and override setting via the API (read-only)
+	python3 scripts/check-tailscale-dns.py $(if $(OVERRIDE),--override $(OVERRIDE))
+
+sync-tailscale-dns: ## Point Tailscale DNS nameservers at the Pi-hole hosts (APPLY=1 to write)
+	python3 scripts/sync-tailscale-dns.py $(if $(APPLY),--apply)
 
 check-services: ## Check DNS and service URLs without changing the stack
 	python3 scripts/check-services.py

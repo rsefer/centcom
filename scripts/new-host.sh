@@ -110,11 +110,16 @@ echo "==> Checking DNS and service URLs from $HOST"
 remote 'cd ~/centcom && python3 scripts/check-services.py' ||
   echo "check-services reported problems; see above." >&2
 
+echo "==> Tailscale DNS nameservers"
+python3 scripts/sync-tailscale-dns.py --apply ||
+  echo "DNS sync failed; run 'make sync-tailscale-dns APPLY=1' by hand." >&2
+python3 scripts/check-tailscale-dns.py || true
+
 echo
 echo "$HOST is provisioned and rebooted cleanly at $NEW_IP."
 echo "Remaining by hand:"
 echo "  - Approve $HOST's subnet route and exit node in the Tailscale admin console if its tag is missing."
 if [ "$IP_CHANGED" = true ]; then
-  echo "  - Update $HOST's address anywhere it is configured by IP (Tailscale DNS nameservers, client DNS, Beszel hub system)."
+  echo "  - Update $HOST's address anywhere it is configured by IP (client DNS, Beszel hub system)."
 fi
 echo "  - Run 'make check-hosts' to confirm no drift."
