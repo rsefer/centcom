@@ -193,6 +193,25 @@ For a fresh Pi, authenticate with
 `scripts/configure-routing.sh` for forwarding and the subnet route. Every Pi is an
 exit node; clients pick one in their Tailscale app.
 
+### DNS failover
+
+`scripts/dns-failover.py` runs every minute on southcom (not a Pi-hole) via the
+`centcom-dns-failover` timer (`make install-dns-failover` on southcom). It sends a
+real DNS query to each Pi-hole's Tailscale IP and keeps the tailnet's global
+nameservers in step:
+
+- A Pi-hole is removed after 3 consecutive failed checks and re-added after 2 good ones.
+- Only healthy Pi-holes are listed (in `services.toml` order); other nameservers are kept.
+- With no healthy Pi-hole, "Override DNS servers" is turned OFF (clients use their local
+  resolvers) and the list is left alone; it turns ON again when one recovers.
+- Email over SMTP (same relay as the Beszel hub) on host state changes, DNS changes, and 3 consecutive Tailscale API failures.
+- Nothing is judged unless southcom's own `tailscaled` is Running.
+- `sudo touch /var/lib/centcom-dns-failover/paused` suspends changes; `dns-failover.py --dry-run` reports only.
+
+Setup: create a Tailscale OAuth client with the `dns` scope (Read + Write) and set
+`TS_DNS_OAUTH_CLIENT_ID/SECRET`, `SMTP_HOST/PORT/USERNAME/PASSWORD`, `DNS_ALERT_FROM` and `DNS_ALERT_TO`
+in southcom's `.env`. Logs: `journalctl -u centcom-dns-failover`.
+
 ### Host hardening
 
 `make harden` (run on each Pi as the login user, then reboot) is idempotent and

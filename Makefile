@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -58,6 +58,9 @@ dns-records: ## Print the proxy DNS records: make dns-records [PROXY=primary|sta
 
 check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROXY_IP=100.x.x.x
 	sh scripts/check-proxy.sh "$(DOMAIN)" "$(PROXY_IP)"
+
+install-dns-failover: ## Install the Pi-hole to Tailscale DNS failover timer (run on southcom)
+	./scripts/install-dns-failover.sh
 
 test: ## Run the Python test suite
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
