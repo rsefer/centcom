@@ -83,9 +83,12 @@ if tailscale status --json 2> /dev/null | grep -q '"BackendState": "Running"'; t
 else
   set -- --hostname="$HOST" --advertise-tags=tag:centcom --advertise-exit-node
   key="$(env_value TS_AUTHKEY)"
-  if [ -n "$key" ]; then
-    set -- "$@" --auth-key="$key"
-  else
+  case "$key" in
+    tskey-auth-*) set -- "$@" --auth-key="$key" ;;
+    "") ;;
+    *) echo "Ignoring TS_AUTHKEY: it is not an auth key (tskey-auth-...); an API key or OAuth secret cannot enroll a node." >&2; key="" ;;
+  esac
+  if [ -z "$key" ]; then
     echo "Open the login URL below to authenticate this node."
   fi
   sudo tailscale up "$@"
