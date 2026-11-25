@@ -7,3 +7,4 @@ backup.log
 /extensions/
 __pycache__/
 /services/caddy/www/src/services.json
+/services/caddy/generated/

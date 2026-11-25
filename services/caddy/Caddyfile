@@ -17,28 +17,6 @@
   }
 }
 
-# Dashboard static server
-{$DOMAIN}, http:// {
-  import access_log
-  handle /status/applications {
-    reverse_proxy status-agent:8080
-  }
-  handle_path /status/northcom {
-    reverse_proxy {$STATUS_NORTHCOM_UPSTREAM}
-  }
-  handle_path /status/southcom {
-    reverse_proxy {$STATUS_SOUTHCOM_UPSTREAM}
-  }
-  handle_path /status/eastcom {
-    reverse_proxy {$STATUS_EASTCOM_UPSTREAM}
-  }
-  handle {
-    root * /usr/share/caddy
-    rewrite /live-status /index.html
-    file_server
-  }
-}
-
 # Reusable snippet for Tailscale HTTPS upstreams.
 (ts_upstream) {
   reverse_proxy https://{args[0]}.spaniel-dragon.ts.net {
@@ -48,63 +26,5 @@
   }
 }
 
-# Example for an entry that has a *public A record* DNS entry
-# The a record should point to the parent IP (in this case, centcom)
-# Use DNS challenge so cert issuance works even when hostnames resolve only to a Tailscale IP
-#
-# sub = the Tailscale name of the machine
-#
-# sub.{$DOMAIN} {
-#   import ts_upstream sub
-# }
-
-# Subdomains
-ai.{$DOMAIN} {
-  import access_log
-  import ts_upstream ai
-}
-beszel.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$BESZEL_UPSTREAM}
-}
-draw.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$DRAW_UPSTREAM}
-}
-go.{$DOMAIN} {
-  import access_log
-  import ts_upstream go
-}
-keep.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$KEEP_UPSTREAM}
-}
-gym.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$GYM_UPSTREAM}
-}
-gym-mcp.{$DOMAIN} {
-  import access_log
-  handle /mcp {
-    reverse_proxy {$GYM_MCP_UPSTREAM}
-  }
-  handle {
-    respond "Not found" 404
-  }
-}
-ha.{$DOMAIN} {
-  import access_log
-  import ts_upstream home-assistant
-}
-pihole.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$PIHOLE_UPSTREAM}
-}
-rss.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$RSS_UPSTREAM}
-}
-vault.{$DOMAIN} {
-  import access_log
-  reverse_proxy {$VAULT_UPSTREAM}
-}
+# Generated from services.toml by `make generate` (also run during deploy).
+import generated/routes.caddy

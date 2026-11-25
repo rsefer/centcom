@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 
 
@@ -16,6 +17,8 @@ class ComposeConfigTests(unittest.TestCase):
                            capture_output=True)
         except (FileNotFoundError, subprocess.CalledProcessError):
             raise unittest.SkipTest("Docker Compose is not available")
+        subprocess.run([sys.executable, str(ROOT / "scripts/services.py"), "generate"],
+                       cwd=ROOT, check=True, capture_output=True)
 
     def config(self, host):
         env = dict(os.environ, TAILSCALE_IP_NORTHCOM="100.73.192.117",
@@ -47,6 +50,8 @@ class ComposeConfigTests(unittest.TestCase):
         mounts = {v["target"]: v["source"] for v in caddy["volumes"]}
         self.assertEqual(mounts["/etc/caddy/Caddyfile"],
                          str(ROOT / "services/caddy/Caddyfile"))
+        self.assertEqual(mounts["/etc/caddy/generated"],
+                         str(ROOT / "services/caddy/generated"))
         self.assertTrue(all(p["host_ip"] == "100.73.192.117" for p in caddy["ports"]))
         agent = config["services"]["beszel-agent"]
         self.assertEqual(agent["network_mode"], "host")
@@ -130,6 +135,9 @@ class ComposeConfigTests(unittest.TestCase):
         self.assertEqual(caddy["build"]["context"], str(ROOT / "services/caddy"))
         self.assertEqual({v["target"]: v["source"] for v in caddy["volumes"]}["/etc/caddy/Caddyfile"],
                          str(ROOT / "services/caddy/Caddyfile"))
+        generated = next(v for v in caddy["volumes"] if v["target"] == "/etc/caddy/generated")
+        self.assertEqual(generated["source"], str(ROOT / "services/caddy/generated"))
+        self.assertTrue(generated["read_only"])
         rss = services["rss"]
         mounts = {v["target"]: v["source"] for v in rss["volumes"]}
         self.assertEqual(mounts["/var/www/FreshRSS/data"], str(ROOT / "data"))

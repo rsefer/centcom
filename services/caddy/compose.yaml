@@ -24,6 +24,7 @@ services:
       - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./generated:/etc/caddy/generated:ro
       - caddy_data:/data
       - caddy_config:/config
     # Upstream addresses are generated from services.toml (`make generate`);

@@ -310,9 +310,13 @@ make boot-recover
 ## Hosts and services registry
 
 `services.toml` is the one place that lists hosts, services, where each runs,
-and its published port. Edit it, run `make generate`, and commit the generated
-env files:
+and its published port. Commit changes to this registry, not generated files.
+All output below is gitignored and generated during deployment. Run
+`make generate` before using Compose directly in a fresh checkout:
 
+- `services/caddy/generated/routes.caddy` defines the dashboard, each host's
+  status endpoint, and all service subdomains. The handwritten
+  `services/caddy/Caddyfile` imports it and keeps shared TLS and logging settings.
 - `services/caddy/generated/<host>.env` and `single.env` give each Caddy its
   upstream addresses: container names for services on its own host, the
   owning host's Tailscale IP and published port otherwise. Host Compose files
@@ -328,12 +332,18 @@ env files:
   needs; add `BATCH=1` for a Route 53 change batch to pass to
   `aws route53 change-resource-record-sets --change-batch file://...`.
 
-A new proxied service also needs its Compose service, published port, and a
-site block in `services/caddy/Caddyfile` (`reverse_proxy {$NAME_UPSTREAM}`, or
-`import ts_upstream <machine>` for a tailnet machine). `make test` fails when
-the generated files are stale or the Caddyfile and `services.toml` disagree.
+A new container-backed service also needs its Compose service and published
+port where required for remote proxies; no manual Caddy site block is needed.
+`path` is only the dashboard/health-probe path. Set `proxy_path` to restrict
+proxying to an exact path (for example `/mcp`); all other paths then return 404.
+Omit it to proxy the entire site, including Pi-hole outside `/admin/`.
+`make test` verifies generation and routing without requiring committed output.
 The Caddyfile has no upstream defaults, so a missing variable fails loudly.
-Redeploying recreates Caddy and the status agent so they load changed files.
+`make deploy` generates routes, upstreams and dashboard data on each host before
+cron setup reads Compose configuration, then `scripts/reload.sh` regenerates
+them before building or starting services. Boot recovery also generates them
+before starting the stack. Generation errors stop these operations. Reloading
+recreates Caddy and the status agent so they load changed files.
 
 ## Dashboard
 - The landing page at `https://${DOMAIN}` is a React + [Radix Themes](https://www.radix-ui.com/themes) app in `services/caddy/www`.

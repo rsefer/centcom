@@ -51,6 +51,8 @@ wait_for_tailscale() {
 
 wait_for_tailscale 180
 
+python3 scripts/services.py generate
+
 if ! docker network inspect caddy_net >/dev/null 2>&1; then
 	echo "Creating missing network: caddy_net"
 	docker network create caddy_net >/dev/null

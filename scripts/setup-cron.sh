@@ -10,6 +10,7 @@ BACKUP_COMMAND="~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"
 BACKUP_JOB="$BACKUP_SCHEDULE $BACKUP_COMMAND"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$(dirname "$SCRIPT_DIR")" || exit 1
+python3 scripts/services.py generate || exit 1
 SERVICES="$(docker compose config --services)" || exit 1
 
 if [ -L compose.yaml ]; then

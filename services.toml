@@ -1,16 +1,18 @@
 # Single source of truth for centcom hosts and services.
 #
-# After editing, run `make generate` and commit the generated env files. It writes:
-#   services/caddy/generated/<host>.env, single.env   Caddy upstream variables (committed)
+# Generated files are gitignored and written during deploy. For local Compose
+# commands or dashboard builds, run `make generate` first. It writes:
+#   services/caddy/generated/routes.caddy           Caddy dashboard and service routes
+#   services/caddy/generated/<host>.env, single.env   Caddy upstream variables
 #   services/caddy/www/src/services.json              dashboard service list (gitignored;
 #                                                     builds and `make reload` regenerate it)
 # The status agent and the check scripts read this file directly, and
 # `make dns-records` prints the DNS records the proxy needs.
 #
 # Tailscale addresses are not stored here: each host's IP is TAILSCALE_IP_<HOST>
-# in the private .env. Adding a service that Caddy routes also needs a site
-# block in services/caddy/Caddyfile and its Compose service; `make test`
-# fails when the Caddyfile, this file, or the generated files disagree.
+# in the private .env. Adding a service that Caddy routes also needs its
+# Compose service. Tests verify generation and routing without committed output.
+# Deploys run generation before building and starting the stack.
 
 # Hosts in dashboard order. Each needs a docker-compose.<host>.yml.
 hosts = ["northcom", "southcom", "eastcom"]
@@ -29,6 +31,8 @@ container = "status-agent:8080"
 # Service fields:
 #   title, icon, dashboard   Dashboard card ("primary" or "health"); omit to hide.
 #   path                     URL path used by health probes (default "/").
+#   proxy_path               Restrict proxying to this exact URL path; other
+#                            paths return 404. Omit to proxy the entire site.
 #   container                Address on the shared Docker network (name:port).
 #   placement                Hosts running the container, in preference order.
 #                            `port` is published on that host's Tailscale IP.
@@ -116,6 +120,7 @@ checks = ["deploy", "failover"]
 
 [services.gym-mcp]
 path = "/mcp"
+proxy_path = "/mcp"
 container = "opengym-mcp:8000"
 placement = [{ host = "southcom", port = 18083 }]
 checks = ["failover"]

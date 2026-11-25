@@ -5,7 +5,9 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +73,11 @@ class ServicesTests(unittest.TestCase):
             lambda c: c["services"]["app"]["placement"].append({"host": "nope"}),
             lambda c: c["services"]["app"].update(dashboard="side"),
             lambda c: c["services"]["app"].update(checks=["other"]),
+            lambda c: c["services"]["ext"].update(tailnet="bad name"),
+            lambda c: c["services"]["app"].update(proxy_path="/mcp*"),
+            lambda c: c["services"]["app"].update(proxy_path="mcp"),
+            lambda c: c["services"]["app"].update(proxy_path="/mcp\nrespond 200"),
+            lambda c: c["services"]["app"].update(proxy_path=123),
             lambda c: c["hosts"].append("a"),
         ):
             config = copy.deepcopy(SAMPLE)
@@ -78,6 +85,29 @@ class ServicesTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 registry.validate(config)
         registry.validate(SAMPLE)
+
+    def test_routes_derive_services_hosts_and_status_container(self):
+        routes = registry.caddy_routes(SAMPLE)
+        self.assertIn("app.{$DOMAIN} {\n  import access_log\n"
+                      "  reverse_proxy {$APP_UPSTREAM}\n}", routes)
+        self.assertIn("ext.{$DOMAIN} {\n  import access_log\n"
+                      "  import ts_upstream machine\n}", routes)
+        self.assertIn("handle /status/applications {\n    reverse_proxy status:80\n", routes)
+        for host in SAMPLE["hosts"]:
+            self.assertIn(f"handle_path /status/{host} {{\n"
+                          "    reverse_proxy {$STATUS_%s_UPSTREAM}\n" %
+                          registry.env_name(host), routes)
+        self.assertNotIn("handle /x/", routes)
+
+    def test_proxy_path_restricts_routing_without_changing_probe_path(self):
+        config = copy.deepcopy(SAMPLE)
+        config["services"]["app"]["proxy_path"] = "/mcp"
+        registry.validate(config)
+        routes = registry.caddy_routes(config)
+        self.assertIn("handle /mcp {\n    reverse_proxy {$APP_UPSTREAM}\n  }\n"
+                      '  handle {\n    respond "Not found" 404\n  }', routes)
+        self.assertNotIn("handle_path /mcp", routes)
+        self.assertEqual(registry.applications(config)["app"], "/x/")
 
     def test_change_batch_upserts_apex_and_wildcard(self):
         host, records = registry.dns_records(
@@ -93,10 +123,18 @@ class RepositoryTests(unittest.TestCase):
     def setUpClass(cls):
         cls.config = registry.load(ROOT / "services.toml")
 
-    def test_generated_files_are_current(self):
-        for relative, text in registry.outputs(self.config).items():
-            self.assertEqual((ROOT / relative).read_text(), text,
-                             f"{relative} is stale; run `make generate`")
+    def test_generation_writes_missing_outputs_and_detects_drift(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(registry, "ROOT", Path(temp)):
+            (Path(temp) / registry.DASHBOARD_JSON).parent.mkdir(parents=True)
+            self.assertEqual(registry.generate(self.config, check=True), 1)
+            self.assertEqual(registry.generate(self.config), 0)
+            for relative, text in registry.outputs(self.config).items():
+                self.assertEqual((Path(temp) / relative).read_text(), text)
+            self.assertEqual(registry.generate(self.config, check=True), 0)
+            routes = Path(temp) / "services/caddy/generated/routes.caddy"
+            routes.write_text("# stale\n")
+            self.assertEqual(registry.generate(self.config, check=True), 1)
+            self.assertEqual(routes.read_text(), "# stale\n")
 
     def test_hosts_match_host_compose_files(self):
         found = sorted(re.match(r"docker-compose\.(.+)\.yml", p.name).group(1)
@@ -104,7 +142,9 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(sorted(self.config["hosts"]), found)
 
     def test_caddyfile_matches_services(self):
-        caddyfile = (ROOT / "services/caddy/Caddyfile").read_text()
+        self.assertIn("import generated/routes.caddy",
+                      (ROOT / "services/caddy/Caddyfile").read_text())
+        caddyfile = registry.caddy_routes(self.config)
         sites = set(re.findall(r"^([a-z0-9-]+)\.\{\$DOMAIN\} \{", caddyfile, re.M))
         self.assertEqual(sites, set(self.config["services"]))
         for name, service in self.config["services"].items():
@@ -115,7 +155,7 @@ class RepositoryTests(unittest.TestCase):
                 self.assertIn("{$%s_UPSTREAM}" % registry.env_name(name), block.group(1))
 
     def test_every_caddyfile_variable_is_generated_for_every_proxy(self):
-        caddyfile = (ROOT / "services/caddy/Caddyfile").read_text()
+        caddyfile = registry.caddy_routes(self.config)
         used = set(re.findall(r"\{\$([A-Z_]+_UPSTREAM)[:}]", caddyfile))
         self.assertFalse(any(":" in m for m in re.findall(r"\{\$[A-Z_]+_UPSTREAM(:[^}]*)\}",
                                                            caddyfile)), "defaults hide drift")
@@ -137,8 +177,6 @@ class RepositoryTests(unittest.TestCase):
         lines = [line.split("\t") for line in result.stdout.splitlines()]
         self.assertEqual(lines[0], ["dashboard", "/", ""])
         self.assertIn(["gym-mcp", "/mcp", "optional"], lines)
-        self.assertEqual(subprocess.run([sys.executable, str(SCRIPT), "generate", "--check"],
-                                        capture_output=True, text=True).returncode, 0)
 
     def test_dashboard_data_covers_status_probes(self):
         data = json.loads(registry.dashboard_json(self.config))

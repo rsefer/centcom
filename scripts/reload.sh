@@ -41,7 +41,7 @@ wait_for_service() {
 	done
 }
 
-# The dashboard service list is gitignored, but the Caddy image build needs it.
+# Generate Caddy routes/upstreams and dashboard data before building or starting services.
 python3 scripts/services.py generate
 docker compose pull --ignore-buildable
 docker compose build
