@@ -13,6 +13,7 @@
 # Stop the service that owns the data first, e.g.:
 #   docker compose stop opengym-api   (for opengym_data)
 #   docker compose stop pihole        (for pihole_data / pihole_dnsmasq)
+#   docker compose stop vaultwarden   (for vaultwarden_data)
 #
 # pihole_data: after restoring, start pihole and run
 #   docker compose exec pihole sh -c 'cp /etc/pihole/gravity-config.db /etc/pihole/gravity.db && chown pihole:pihole /etc/pihole/gravity.db && pihole -g'
@@ -37,7 +38,7 @@ case "$NAME" in
 esac
 
 case "$NAME" in
-	opengym_data|pihole_data|pihole_dnsmasq|beszel_data|beszel_agent_data|caddy_data)
+	opengym_data|pihole_data|pihole_dnsmasq|beszel_data|beszel_agent_data|caddy_data|vaultwarden_data)
 		TARGET="centcom_$NAME"
 		TARGET_KIND="volume"
 		;;

@@ -128,6 +128,14 @@ archive_mount karakeep_data centcom_karakeep_data \
 restart_services
 fi
 
+# Vaultwarden: stop briefly so its SQLite database, encryption keys, and
+# attachments are captured as one consistent backup.
+if has_service vaultwarden; then
+	stop_service vaultwarden
+	archive_mount vaultwarden_data centcom_vaultwarden_data
+	restart_services
+fi
+
 # Remaining named volumes (live archives; their sqlite data is low-write).
 # Pi-hole: query history (pihole-FTL.db) and the compiled blocklist are
 # excluded. gravity.db also holds adlists, allow/deny rules, groups and clients

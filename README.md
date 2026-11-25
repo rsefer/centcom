@@ -33,7 +33,7 @@ Each host file extends the shared service definitions under `services/`.
 | Host | Symlink target | Services |
 | --- | --- | --- |
 | northcom | `docker-compose.northcom.yml` | Caddy, Pi-hole, Pi-hole sync, Beszel agent, status agent |
-| southcom | `docker-compose.southcom.yml` | Standby Caddy, Beszel, Excalidraw, FreshRSS, GoLink, openGym, status agent |
+| southcom | `docker-compose.southcom.yml` | Standby Caddy, Beszel, Excalidraw, FreshRSS, GoLink, openGym, Vaultwarden, status agent |
 | eastcom | `docker-compose.eastcom.yml` | Secondary Pi-hole, Beszel agent, status agent |
 
 For example, on northcom run `ln -s docker-compose.northcom.yml compose.yaml`
@@ -58,6 +58,16 @@ gravity after each synchronization. Both resolvers must be configured on clients
 before DNS redundancy is effective; merely running a second Pi-hole does not
 change client DNS settings. Test both resolvers and recovery before changing
 tailnet-wide DNS.
+
+Vaultwarden runs only on southcom and is reached at `https://vault.${DOMAIN}`.
+Northcom's primary Caddy proxies to it over Tailscale; southcom's standby Caddy
+uses the local container. This keeps Vaultwarden available through the standby
+proxy during a northcom outage after the documented manual failover, but there
+is no data replication: a southcom outage takes Vaultwarden offline. The host
+backup includes the complete `vaultwarden_data` volume; stop Vaultwarden before
+restoring it with `scripts/restore.sh`. For initial account creation only, set
+`VAULTWARDEN_SIGNUPS_ALLOWED=true` in `.env`, deploy, create the account, then
+set it back to `false` and deploy again. Keep signups closed.
 
 Container stdout/stderr
 logs rotate at 10 MiB and keep three files; Caddy access logs also rotate.
@@ -396,8 +406,8 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 
 | Unavailable | Expected effect | Recovery starting point |
 | --- | --- | --- |
-| northcom | Primary Caddy and Pi-hole are unavailable. Eastcom can answer DNS if clients are configured to use it; switch DNS manually to use southcom's proxy. | Follow Manual proxy failover; connect to northcom by IP and inspect Docker, Tailscale, Caddy and `boot-recover.log`. |
-| southcom | Beszel hub, FreshRSS, Excalidraw, GoLink and openGym are unavailable; Caddy and Pi-hole can remain available. | Connect to southcom by IP and inspect its Compose services and `boot-recover.log`. |
+| northcom | Primary Caddy and Pi-hole are unavailable. Eastcom can answer DNS if clients are configured to use it; switch DNS manually to use southcom's proxy. Vaultwarden remains available on southcom. | Follow Manual proxy failover; connect to northcom by IP and inspect Docker, Tailscale, Caddy and `boot-recover.log`. |
+| southcom | Vaultwarden, Beszel hub, FreshRSS, Excalidraw, GoLink and openGym are unavailable; northcom's Caddy and Pi-hole can remain available. | Connect to southcom by IP and inspect its Compose services and `boot-recover.log`. |
 | eastcom | Secondary Pi-hole and its Beszel agent are unavailable; clients using northcom can still resolve DNS. | Connect to eastcom by IP, inspect Pi-hole and verify synchronization after recovery. |
 | Tailscale | Tailnet IPs and the Caddy service URLs are unreachable from affected devices; local network access may still work. | Check `tailscale status` locally and on the host. Use a known LAN address, router DHCP lease, or a directly attached console; a Tailscale IP alone cannot bypass a Tailscale outage. |
 | DNS | Service names and SSH aliases may fail even when hosts are running. | Query each Pi-hole by IP, use SSH and HTTPS by IP as below, or temporarily use a working resolver on the affected client. Restore the intended DNS configuration afterward. |
@@ -497,7 +507,7 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4`.
 	- TTL: 300 seconds is a reasonable value.
 - The wildcard makes new one-level hostnames such as `rss.vpn.rsefer.com` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
-- DNS only resolves the hostname; Caddy routes requests to the services. In the single-host deployment they share a Docker network; in the split deployment Caddy reaches southcom over Tailscale. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to northcom's Tailscale IP. The Pi-hole web UI has no directly published port; southcom's FreshRSS port is reachable directly over Tailscale.
+- DNS only resolves the hostname; Caddy routes requests to the services. In the single-host deployment they share a Docker network; in the split deployment Caddy reaches southcom over Tailscale. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to northcom's Tailscale IP. The Pi-hole web UI has no directly published port; app upstream ports are reachable directly over Tailscale.
 
 # Public trusted TLS (DNS challenge)
 - This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.

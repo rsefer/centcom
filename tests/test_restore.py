@@ -27,6 +27,8 @@ class RestoreTests(unittest.TestCase):
             "import os, subprocess, sys\n"
             "from pathlib import Path\n"
             "args = sys.argv[1:]\n"
+            "with open(os.environ['DOCKER_LOG'], 'a') as log:\n"
+            "    log.write(' '.join(args) + '\\n')\n"
             "root = Path(os.environ['TEST_ROOT'])\n"
             "stage = root / 'stage'\n"
             "if args[:2] == ['volume', 'create']:\n"
@@ -45,7 +47,8 @@ class RestoreTests(unittest.TestCase):
             "    sys.exit(1)\n"
         )
         docker.chmod(0o755)
-        self.env = dict(os.environ, TEST_ROOT=str(self.root),
+        self.docker_log = self.root / "docker.log"
+        self.env = dict(os.environ, TEST_ROOT=str(self.root), DOCKER_LOG=str(self.docker_log),
                         PATH=f"{self.bin}:{os.environ['PATH']}")
         self.archive = self.root / "opengym_data.tar.gz"
 
@@ -76,6 +79,19 @@ class RestoreTests(unittest.TestCase):
                 self.assertIn("target was not changed", result.stderr)
                 self.assertEqual((self.target / "existing").read_text(), "keep me")
                 self.assertFalse((self.root / "stage").exists())
+
+    def test_vaultwarden_archive_targets_its_named_volume(self):
+        self.archive = self.root / "vaultwarden_data.tar.gz"
+        with tarfile.open(self.archive, "w:gz") as archive:
+            data = b"vault data"
+            info = tarfile.TarInfo("db.sqlite3")
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+
+        result = self.restore()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("centcom_vaultwarden_data:/target", self.docker_log.read_text())
 
 
 if __name__ == "__main__":

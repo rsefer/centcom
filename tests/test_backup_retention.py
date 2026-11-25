@@ -67,6 +67,39 @@ class BackupRetentionTests(unittest.TestCase):
         )
         self.assertIn("Failed to export FreshRSS OPML", result.stderr)
 
+    def test_vaultwarden_backup_stops_and_archives_its_data_volume(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            script_dir = root / "scripts"
+            script_dir.mkdir()
+            shutil.copy(BACKUP_SCRIPT, script_dir / "backup.sh")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            docker_log = root / "docker.log"
+            docker = bin_dir / "docker"
+            docker.write_text(
+                "#!/bin/sh\n"
+                'printf "%s\\n" "$*" >> "$DOCKER_LOG"\n'
+                'if [ "$1 $2 $3" = "compose config --services" ]; then\n'
+                '  printf "vaultwarden\\n"\n'
+                'elif [ "$1 $2" = "compose ps" ]; then\n'
+                '  printf "running\\n"\n'
+                "fi\n"
+                "exit 0\n"
+            )
+            docker.chmod(0o755)
+            env = dict(os.environ, HOME=temp, BACKUP_ROOT=str(root / "backups"),
+                       DOCKER_LOG=str(docker_log), PATH=f"{bin_dir}:{os.environ['PATH']}")
+            result = subprocess.run(
+                ["sh", str(script_dir / "backup.sh")], env=env,
+                capture_output=True, text=True, check=True,
+            )
+            calls = docker_log.read_text()
+            self.assertIn("Backing up vaultwarden_data", result.stdout)
+            self.assertIn("compose stop vaultwarden", calls)
+            self.assertIn("centcom_vaultwarden_data:/source:ro", calls)
+            self.assertIn("compose start vaultwarden", calls)
+
     def test_multi_host_backup_uses_hostname_in_s3_prefix(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

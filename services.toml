@@ -59,6 +59,14 @@ container = "pihole:80"
 placement = [{ host = "northcom" }, { host = "eastcom", port = 18085 }]
 checks = ["deploy", "failover"]
 
+[services.vault]
+title = "Vaultwarden"
+icon = "images/vaultwarden.svg"
+dashboard = "primary"
+container = "vaultwarden:80"
+placement = [{ host = "southcom", port = 18088 }]
+checks = ["deploy", "failover"]
+
 [services.go]
 title = "Go Links"
 icon = "images/square-up-right.svg"

@@ -1,0 +1,26 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.37.5
+    container_name: vaultwarden
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      DOMAIN: https://vault.${DOMAIN}
+      SIGNUPS_ALLOWED: ${VAULTWARDEN_SIGNUPS_ALLOWED:-false}
+      INVITATIONS_ALLOWED: "false"
+      WEBSOCKET_ENABLED: "true"
+    volumes:
+      - vaultwarden_data:/data
+    networks:
+      - caddy_net
+    restart: unless-stopped
+
+volumes:
+  vaultwarden_data:
+
+networks:
+  caddy_net:
+    external: true

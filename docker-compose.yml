@@ -8,3 +8,4 @@ include:
   - services/beszel/compose.yaml
   - services/status/compose.yaml
   - services/karakeep/compose.yaml
+  - services/vaultwarden/compose.yaml

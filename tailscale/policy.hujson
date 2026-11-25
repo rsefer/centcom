@@ -12,6 +12,7 @@
 //   22           sshd
 //   18081-18084  southcom apps, read directly by the other Caddy
 //   18087        southcom Karakeep, read directly by the other Caddy
+//   18088        southcom Vaultwarden, read directly by the other Caddy
 //   18085        eastcom Pi-hole admin API (Caddy, Nebula Sync)
 //   18086        status agent on every host
 //   18090        Beszel hub (southcom)
@@ -74,7 +75,7 @@
 		{
 			"src": ["tag:centcom"],
 			"dst": ["tag:centcom"],
-			"ip":  ["tcp:18081-18087", "tcp:18090", "tcp:45876"],
+			"ip":  ["tcp:18081-18088", "tcp:18090", "tcp:45876"],
 		},
 		// Caddy -> tailnet HTTPS machines it proxies.
 		{
@@ -148,7 +149,7 @@
 		{
 			"src":    "tag:centcom",
 			// 53 is allowed because autogroup:tagged (DNS grant) includes the Pis.
-			"accept": ["tag:centcom:53", "tag:centcom:18081", "tag:centcom:18085", "tag:centcom:45876", "ai:443"],
+			"accept": ["tag:centcom:53", "tag:centcom:18081", "tag:centcom:18085", "tag:centcom:18088", "tag:centcom:45876", "ai:443"],
 			"deny":   ["tag:centcom:22", "tag:centcom:3306", "ai:22"],
 		},
 	],

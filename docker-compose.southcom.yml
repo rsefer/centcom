@@ -90,6 +90,13 @@ services:
       file: services/karakeep/compose.yaml
       service: karakeep-meili
 
+  vaultwarden:
+    extends:
+      file: services/vaultwarden/compose.yaml
+      service: vaultwarden
+    ports:
+      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18088:80"
+
   rss:
     extends:
       file: services/freshrss/compose.yaml
@@ -109,6 +116,7 @@ volumes:
   opengym_data:
   karakeep_data:
   karakeep_meili:
+  vaultwarden_data:
   status_data:
 
 networks:
