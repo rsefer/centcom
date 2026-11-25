@@ -18,17 +18,8 @@ spec.loader.exec_module(registry)
 
 
 def settings():
-    values = {}
-    env_file = ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            key, separator, value = line.partition("=")
-            if separator:
-                values[key.strip()] = value.strip().strip("\"'")
-    for key in ("DOMAIN", "TAILSCALE_IP", "TAILSCALE_IP_NORTHCOM", "TAILSCALE_IP_SOUTHCOM", "TAILSCALE_IP_EASTCOM"):
-        if os.environ.get(key):
-            values[key] = os.environ[key]
-    return values
+    return registry.read_env(ROOT / ".env",
+                             environment={key: value for key, value in os.environ.items() if value})
 
 
 def dns_lookup(server, hostname):
@@ -96,16 +87,27 @@ def check_url(url):
 
 def main():
     values = settings()
+    try:
+        config = registry.load()
+        dns_hosts = registry.pihole_hosts(config)
+    except (OSError, ValueError) as error:
+        print(f"services.toml: {error}", file=sys.stderr)
+        return 1
     domain = values.get("DOMAIN", "")
-    primary = values.get("TAILSCALE_IP_NORTHCOM") or values.get("TAILSCALE_IP")
-    standby = values.get("TAILSCALE_IP_SOUTHCOM")
-    secondary = values.get("TAILSCALE_IP_EASTCOM")
+    primary = registry.host_ip(config, values, config["proxy"]["primary"])
+    standby = registry.host_ip(config, values, config["proxy"]["standby"])
     if not domain or not primary:
-        print("Set DOMAIN and TAILSCALE_IP_NORTHCOM (or TAILSCALE_IP) in .env", file=sys.stderr)
+        print(f"Set DOMAIN and {registry.ip_var(config['proxy']['primary'])} "
+              "(or TAILSCALE_IP) in .env", file=sys.stderr)
         return 1
     failed = False
     resolved_proxies = []
-    for server in filter(None, (primary, secondary)):
+    servers = [address for host in dns_hosts
+               if (address := registry.host_ip(config, values, host))]
+    if not servers:
+        print("Set Tailscale IPs for the Pi-hole placements in .env", file=sys.stderr)
+        return 1
+    for server in servers:
         try:
             addresses = dns_lookup(server, f"rss.{domain}")
             allowed = {address for address in (primary, standby) if address}
@@ -121,7 +123,7 @@ def main():
     if len(set(resolved_proxies)) > 1:
         print("DNS resolvers disagree on the active proxy", file=sys.stderr)
         failed = True
-    for name, path, _ in registry.checks(registry.load(), "deploy"):
+    for name, path, _ in registry.checks(config, "deploy"):
         url = f"https://{domain if name == 'dashboard' else f'{name}.{domain}'}{path}"
         try:
             status = check_url(url)

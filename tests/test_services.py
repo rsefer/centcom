@@ -78,6 +78,11 @@ class ServicesTests(unittest.TestCase):
             lambda c: c["services"]["app"].update(proxy_path="mcp"),
             lambda c: c["services"]["app"].update(proxy_path="/mcp\nrespond 200"),
             lambda c: c["services"]["app"].update(proxy_path=123),
+            lambda c: c["services"]["app"].update(compose="../other"),
+            lambda c: c["services"]["app"].update(container="app"),
+            lambda c: c["services"]["app"].update(container=123),
+            lambda c: c["services"]["app"]["placement"][0].update(port=0),
+            lambda c: c["status"].update(container="status"),
             lambda c: c["hosts"].append("a"),
         ):
             config = copy.deepcopy(SAMPLE)
@@ -85,6 +90,48 @@ class ServicesTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 registry.validate(config)
         registry.validate(SAMPLE)
+
+    def test_env_parser_and_overrides_preserve_file_values(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / ".env"
+            path.write_text('# ignored=value\nDOMAIN="file.example"\n'
+                            "TAILSCALE_IP_NEW_HOST='100.1.1.1'\nOTHER=file\n")
+            self.assertEqual(registry.read_env(path, environment={
+                "DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
+                "OTHER": "process",
+            }), {"DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
+                 "OTHER": "file"})
+
+    def test_bindings_follow_placement_ports_and_base_directory(self):
+        config = copy.deepcopy(SAMPLE)
+        config["services"]["app"]["compose"] = "application"
+        config["services"]["app"]["placement"][0]["port"] = 8123
+        bindings = registry.compose_bindings(config, "b")
+        self.assertIn("file: ../../application/compose.yaml\n      service: app", bindings)
+        self.assertIn("${TAILSCALE_IP_B:?Set TAILSCALE_IP_B}:8123:80/tcp", bindings)
+        self.assertIn("${TAILSCALE_IP_B:?Set TAILSCALE_IP_B}:9000:80", bindings)
+        self.assertNotIn("8123:80", registry.compose_bindings(config, "a"))
+
+    def test_status_roles_follow_proxy_and_pihole_placement_order(self):
+        config = copy.deepcopy(SAMPLE)
+        config["services"]["pihole"] = config["services"].pop("dns")
+        config["services"]["pihole"]["placement"].reverse()
+        output = registry.status_env(config)
+        self.assertIn('"primary": "${TAILSCALE_IP_B:?Set TAILSCALE_IP_B}"', output)
+        self.assertIn('"secondary": "${TAILSCALE_IP_A:-}"', output)
+        self.assertIn("DNS_PRIMARY_PROXY=${TAILSCALE_IP_A:-${TAILSCALE_IP:", output)
+
+    def test_pihole_sync_uses_registry_replica_port_and_password_references(self):
+        config = copy.deepcopy(SAMPLE)
+        config["services"]["pihole"] = config["services"].pop("dns")
+        config["services"]["pihole"]["placement"][1]["port"] = 8123
+        output = registry.pihole_sync_env(config)
+        self.assertIn("PRIMARY=http://dns:80|${PIHOLE_A_PASSWORD:?Set PIHOLE_A_PASSWORD}", output)
+        self.assertIn("REPLICAS=http://${TAILSCALE_IP_B:?Set TAILSCALE_IP_B}:8123|"
+                      "${PIHOLE_B_PASSWORD:?Set PIHOLE_B_PASSWORD}", output)
+        del config["services"]["pihole"]["placement"][1]["port"]
+        with self.assertRaisesRegex(ValueError, "published port"):
+            registry.pihole_sync_env(config)
 
     def test_routes_derive_services_hosts_and_status_container(self):
         routes = registry.caddy_routes(SAMPLE)

@@ -49,7 +49,8 @@ class StatusAgentTests(unittest.TestCase):
 
     def test_status_checks_both_resolvers_and_reports_failure(self):
         env = {"STATUS_HOST": "northcom", "DOMAIN": "example.com",
-               "DNS_PRIMARY": "100.64.0.1", "DNS_SECONDARY": "100.64.0.2"}
+               "DNS_PRIMARY_PROXY": "100.64.0.1",
+               "DNS_RESOLVERS": json.dumps({"primary": "100.64.0.1", "secondary": "100.64.0.2"})}
         with mock.patch.dict(os.environ, env), \
              mock.patch.object(agent, "backup_status", return_value={"last_success": None}), \
              mock.patch.object(agent, "selfheal_status", return_value={"events": []}), \
@@ -60,6 +61,19 @@ class StatusAgentTests(unittest.TestCase):
         self.assertTrue(status["dns"]["primary"]["ok"])
         self.assertFalse(status["dns"]["secondary"]["ok"])
         self.assertIn("timeout", status["dns"]["secondary"]["error"])
+
+    def test_resolver_and_proxy_hosts_can_differ_and_optional_resolver_is_omitted(self):
+        env = {"STATUS_HOST": "southcom", "DOMAIN": "example.com",
+               "DNS_PRIMARY_PROXY": "100.64.0.3",
+               "DNS_RESOLVERS": json.dumps({"primary": "100.64.0.2", "secondary": ""})}
+        with mock.patch.dict(os.environ, env), \
+             mock.patch.object(agent, "backup_status", return_value={}), \
+             mock.patch.object(agent, "selfheal_status", return_value={}), \
+             mock.patch.object(agent.checks, "dns_lookup",
+                               return_value=["100.64.0.3"]) as dns:
+            result = agent.status()
+        self.assertEqual(result["dns"], {"primary": {"ok": True, "proxy": "primary"}})
+        dns.assert_called_once_with("100.64.0.2", "rss.example.com")
 
     def test_unexpected_dns_answer_is_a_failure(self):
         with mock.patch.object(agent.checks, "dns_lookup", return_value=["100.64.0.9"]):

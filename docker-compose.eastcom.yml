@@ -3,27 +3,21 @@ name: centcom
 services:
   status-agent:
     extends:
-      file: services/status/compose.yaml
+      file: services/caddy/generated/eastcom.compose.yaml
       service: status-agent
     environment:
       STATUS_HOST: eastcom
-    ports: !override
-      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18086:8080"
     volumes:
       - ./scripts/status-agent.py:/app/status-agent.py:ro
       - ./scripts/check-services.py:/app/check-services.py:ro
 
   pihole:
     extends:
-      file: services/pihole/compose.yaml
+      file: services/caddy/generated/eastcom.compose.yaml
       service: pihole
     environment:
       FTLCONF_webserver_api_password: "${PIHOLE_EASTCOM_PASSWORD:?Set PIHOLE_EASTCOM_PASSWORD}"
       FTLCONF_dns_listeningMode: "ALL"
-    ports: !override
-      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:53:53/tcp"
-      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:53:53/udp"
-      - "${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18085:80/tcp"
 
   beszel-agent:
     extends:

@@ -3,7 +3,7 @@ name: centcom
 services:
   caddy:
     extends:
-      file: services/caddy/compose.yaml
+      file: services/caddy/generated/northcom.compose.yaml
       service: caddy
     build:
       context: ./services/caddy
@@ -14,7 +14,7 @@ services:
 
   status-agent:
     extends:
-      file: services/status/compose.yaml
+      file: services/caddy/generated/northcom.compose.yaml
       service: status-agent
     environment:
       STATUS_HOST: northcom
@@ -24,19 +24,17 @@ services:
 
   pihole:
     extends:
-      file: services/pihole/compose.yaml
+      file: services/caddy/generated/northcom.compose.yaml
       service: pihole
 
   pihole-sync:
+    extends:
+      file: services/common/compose.yaml
+      service: networked-service
     image: ghcr.io/lovelaze/nebula-sync:v0.11.3
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    env_file:
+      - services/caddy/generated/pihole-sync.env
     environment:
-      PRIMARY: "http://pihole:80|${PIHOLE_NORTHCOM_PASSWORD:?Set PIHOLE_NORTHCOM_PASSWORD}"
-      REPLICAS: "http://${TAILSCALE_IP_EASTCOM:?Set TAILSCALE_IP_EASTCOM}:18085|${PIHOLE_EASTCOM_PASSWORD:?Set PIHOLE_EASTCOM_PASSWORD}"
       FULL_SYNC: "false"
       SYNC_CONFIG_DNS: "true"
       SYNC_CONFIG_DNS_EXCLUDE: "interface,listeningMode"
@@ -50,9 +48,6 @@ services:
       RUN_GRAVITY: "true"
       CRON: "0 * * * *"
       TZ: America/Chicago
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
   beszel-agent:
     extends:

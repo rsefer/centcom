@@ -1,17 +1,14 @@
 services:
   caddy:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: centcom/caddy-route53:local
     build:
       context: .
       dockerfile: Dockerfile
     container_name: caddy
     hostname: caddy
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost || exit 1"]
       interval: 30s
@@ -37,8 +34,6 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - ROUTE53_HOSTED_ZONE_ID=${ROUTE53_HOSTED_ZONE_ID}
-    networks:
-      - caddy_net
 
 volumes:
   caddy_data:

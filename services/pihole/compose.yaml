@@ -1,12 +1,10 @@
 services:
   pihole:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: pihole/pihole:latest
     container_name: pihole
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
       - TZ=America/Chicago
     ports:
@@ -15,9 +13,6 @@ services:
     volumes:
       - pihole_data:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
 volumes:
   pihole_data:

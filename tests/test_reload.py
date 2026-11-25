@@ -32,6 +32,8 @@ class ReloadTests(unittest.TestCase):
                 'if [ "$1" = compose ]; then\n'
                 '  test -f services/caddy/generated/routes.caddy || exit 1\n'
                 '  test -f services/caddy/generated/northcom.env || exit 1\n'
+                '  test -f services/caddy/generated/northcom.compose.yaml || exit 1\n'
+                '  test -f services/caddy/generated/status.env || exit 1\n'
                 '  test -f services/caddy/www/src/services.json || exit 1\n'
                 'fi\n'
                 'printf "%s\\n" "$*" >> "$TEST_LOG"\n'

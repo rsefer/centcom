@@ -28,17 +28,31 @@ class ComposeConfigTests(unittest.TestCase):
                    PIHOLE_EASTCOM_PASSWORD="replica-test", DOMAIN="example.com")
         result = subprocess.run(
             ["docker", "compose", "--env-file", ".env.sample",
-             "-f", f"docker-compose.{host}.yml", "--profile", "opengym-mcp",
+             "-f", "docker-compose.yml" if host == "single" else f"docker-compose.{host}.yml",
+             "--profile", "opengym-mcp",
              "config", "--format", "json"],
             cwd=ROOT, env=env, capture_output=True, text=True, check=True,
         )
         config = json.loads(result.stdout)
         for service in config["services"].values():
+            self.assertEqual(service["restart"], "unless-stopped")
             self.assertEqual(service["logging"], {
                 "driver": "json-file",
                 "options": {"max-size": "10m", "max-file": "3"},
             })
         return config
+
+    def test_shared_defaults_preserve_network_modes_without_adding_services(self):
+        for host in ("single", "northcom", "southcom", "eastcom"):
+            with self.subTest(host=host):
+                services = self.config(host)["services"]
+                self.assertNotIn("service-defaults", services)
+                self.assertNotIn("networked-service", services)
+                self.assertEqual(services["beszel-agent"]["network_mode"], "host")
+                self.assertNotIn("networks", services["beszel-agent"])
+                for name, service in services.items():
+                    if name != "beszel-agent":
+                        self.assertEqual(set(service["networks"]), {"caddy_net"}, name)
 
     def test_northcom_reuses_caddy_with_correct_paths_and_upstreams(self):
         config = self.config("northcom")
@@ -94,6 +108,15 @@ class ComposeConfigTests(unittest.TestCase):
             targets = {v["target"] for v in
                        self.config(host)["services"]["status-agent"]["volumes"]}
             self.assertTrue({"/app/services.py", "/app/services.toml"} <= targets, host)
+
+    def test_status_agents_receive_registry_derived_resolvers_and_proxy_roles(self):
+        for host in ("northcom", "southcom", "eastcom"):
+            environment = self.config(host)["services"]["status-agent"]["environment"]
+            self.assertEqual(json.loads(environment["DNS_RESOLVERS"]), {
+                "primary": "100.73.192.117", "secondary": "100.127.122.57",
+            })
+            self.assertEqual(environment["DNS_PRIMARY_PROXY"], "100.73.192.117")
+            self.assertEqual(environment["DNS_STANDBY_PROXY"], "100.97.91.90")
 
     def test_status_agents_mount_selfheal_state_read_only(self):
         for host in ("northcom", "southcom", "eastcom"):

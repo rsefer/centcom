@@ -2,13 +2,14 @@
 """Sync TAILSCALE_IP_<HOST> in every host's .env from `tailscale status`.
 
 Dry run by default; pass --apply to write. Updates the local .env and
-~/centcom/.env on each host that has a docker-compose.<host>.yml. Only keys
-Keys for hosts that have a compose file but no line yet are appended. Pass
+~/centcom/.env on each host listed in services.toml. Missing host keys are
+appended. Pass
 --deploy (implies --apply) to run `make deploy HOST=<h>` for changed hosts.
 
 Usage: scripts/sync-tailscale-ips.py [--apply] [--deploy] [--user rsefer]
 """
 import argparse
+import importlib.util
 import json
 import re
 import subprocess
@@ -16,6 +17,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location("centcom_services", ROOT / "scripts" / "services.py")
+registry = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(registry)
 
 
 def tailscale_ips():
@@ -32,9 +36,7 @@ def tailscale_ips():
 
 
 def hosts():
-    return sorted(re.fullmatch(r"docker-compose\.([a-z0-9-]+)\.yml", p.name).group(1)
-                  for p in ROOT.glob("docker-compose.*.yml")
-                  if re.fullmatch(r"docker-compose\.([a-z0-9-]+)\.yml", p.name))
+    return sorted(registry.load(ROOT / "services.toml")["hosts"])
 
 
 def rewrite(text, wanted):
@@ -50,7 +52,7 @@ def rewrite(text, wanted):
 
     text = re.sub(r"^(TAILSCALE_IP_[A-Z0-9_]+)=(.*)$", sub, text, flags=re.M)
     for host, ip in wanted.items():
-        key = "TAILSCALE_IP_" + host.upper().replace("-", "_")
+        key = registry.ip_var(host)
         if not re.search(rf"^{key}=", text, flags=re.M):
             text = text.rstrip("\n") + f"\n{key}={ip}\n"
             changes.append(f"{key}: (missing) -> {ip}")

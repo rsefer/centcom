@@ -4,6 +4,9 @@
 # commands or dashboard builds, run `make generate` first. It writes:
 #   services/caddy/generated/routes.caddy           Caddy dashboard and service routes
 #   services/caddy/generated/<host>.env, single.env   Caddy upstream variables
+#   services/caddy/generated/<host>.compose.yaml      host port bindings
+#   services/caddy/generated/status.env               DNS resolver and proxy roles
+#   services/caddy/generated/pihole-sync.env           Pi-hole sync URLs and password references
 #   services/caddy/www/src/services.json              dashboard service list (gitignored;
 #                                                     builds and `make reload` regenerate it)
 # The status agent and the check scripts read this file directly, and
@@ -34,6 +37,8 @@ container = "status-agent:8080"
 #   proxy_path               Restrict proxying to this exact URL path; other
 #                            paths return 404. Omit to proxy the entire site.
 #   container                Address on the shared Docker network (name:port).
+#   compose                  Base directory under services (defaults to the
+#                            container name); its Compose service uses that name.
 #   placement                Hosts running the container, in preference order.
 #                            `port` is published on that host's Tailscale IP.
 #                            A Caddy on a listed host uses `container`; any
@@ -83,6 +88,7 @@ title = "FreshRSS"
 icon = "images/freshrss.svg"
 dashboard = "primary"
 container = "rss:80"
+compose = "freshrss"
 placement = [{ host = "southcom", port = 18084 }]
 checks = ["deploy", "failover"]
 
@@ -99,6 +105,7 @@ title = "OpenGym"
 icon = "images/opengym.svg"
 dashboard = "primary"
 container = "opengym-app:80"
+compose = "opengym"
 placement = [{ host = "southcom", port = 18082 }]
 checks = ["deploy", "failover"]
 
@@ -122,6 +129,7 @@ checks = ["deploy", "failover"]
 path = "/mcp"
 proxy_path = "/mcp"
 container = "opengym-mcp:8000"
+compose = "opengym"
 placement = [{ host = "southcom", port = 18083 }]
 checks = ["failover"]
 optional = true

@@ -3,14 +3,10 @@ name: centcom
 services:
   caddy:
     extends:
-      file: services/caddy/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: caddy
     build:
       context: ./services/caddy
-    ports: !override
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:80:80"
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:443:443"
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:443:443/udp"
     volumes:
       - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
     env_file:
@@ -18,22 +14,18 @@ services:
 
   status-agent:
     extends:
-      file: services/status/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: status-agent
     environment:
       STATUS_HOST: southcom
-    ports: !override
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18086:8080"
     volumes:
       - ./scripts/status-agent.py:/app/status-agent.py:ro
       - ./scripts/check-services.py:/app/check-services.py:ro
 
   beszel:
     extends:
-      file: services/beszel/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: beszel
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18090:8090"
 
   beszel-agent:
     extends:
@@ -42,10 +34,8 @@ services:
 
   excalidraw:
     extends:
-      file: services/excalidraw/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: excalidraw
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18081:80"
 
   golink:
     extends:
@@ -59,26 +49,20 @@ services:
 
   opengym-app:
     extends:
-      file: services/opengym/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: opengym-app
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18082:80"
 
   opengym-mcp:
     extends:
-      file: services/opengym/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: opengym-mcp
     build:
       context: ./services/opengym/mcp
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18083:8000"
 
   karakeep:
     extends:
-      file: services/karakeep/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: karakeep
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18087:3000"
 
   karakeep-chrome:
     extends:
@@ -92,20 +76,16 @@ services:
 
   vaultwarden:
     extends:
-      file: services/vaultwarden/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: vaultwarden
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18088:80"
 
   rss:
     extends:
-      file: services/freshrss/compose.yaml
+      file: services/caddy/generated/southcom.compose.yaml
       service: rss
     volumes:
       - ./data:/var/www/FreshRSS/data
       - ./extensions:/var/www/FreshRSS/extensions
-    ports:
-      - "${TAILSCALE_IP_SOUTHCOM:?Set TAILSCALE_IP_SOUTHCOM}:18084:80"
 
 volumes:
   caddy_data:

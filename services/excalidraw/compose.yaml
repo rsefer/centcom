@@ -1,15 +1,10 @@
 services:
   excalidraw:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: excalidraw/excalidraw:latest
     container_name: excalidraw
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
 networks:
   caddy_net:

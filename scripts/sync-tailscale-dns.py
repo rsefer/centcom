@@ -14,7 +14,6 @@ import argparse
 import importlib.util
 import json
 import sys
-import tomllib
 import urllib.parse
 from pathlib import Path
 
@@ -22,18 +21,17 @@ ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("tailscale_policy", ROOT / "scripts" / "tailscale-policy.py")
 policy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(policy)
+spec = importlib.util.spec_from_file_location("centcom_services", ROOT / "scripts" / "services.py")
+registry = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(registry)
 
 
 def pihole_addresses():
-    placement = tomllib.loads((ROOT / "services.toml").read_text())["services"]["pihole"]["placement"]
-    env = {}
-    for line in (ROOT / ".env").read_text().splitlines():
-        key, _, value = line.partition("=")
-        env[key.strip()] = value.strip().strip("\"'")
+    config = registry.load(ROOT / "services.toml")
+    env = registry.parse_env((ROOT / ".env").read_text())
     result = []
-    for entry in placement:
-        host = entry["host"]
-        key = "TAILSCALE_IP_" + host.upper().replace("-", "_")
+    for host in registry.pihole_hosts(config):
+        key = registry.ip_var(host)
         if not env.get(key):
             raise SystemExit(f"{key} is not set in .env; cannot resolve Pi-hole host {host}")
         result.append((host, env[key]))

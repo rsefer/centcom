@@ -64,17 +64,15 @@ def dns_status(server, primary, domain, standby=None):
 
 def status():
     domain = os.environ["DOMAIN"]
-    primary = os.environ["DNS_PRIMARY"]
-    servers = {"primary": primary}
-    if os.environ.get("DNS_SECONDARY"):
-        servers["secondary"] = os.environ["DNS_SECONDARY"]
+    primary = os.environ["DNS_PRIMARY_PROXY"]
+    servers = json.loads(os.environ["DNS_RESOLVERS"])
     return {
         "host": os.environ["STATUS_HOST"],
         "backup": backup_status(),
         "selfheal": selfheal_status(),
         "dns": {
             name: dns_status(server, primary, domain, os.environ.get("DNS_STANDBY_PROXY"))
-            for name, server in servers.items()
+            for name, server in servers.items() if server
         },
     }
 
@@ -119,7 +117,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    for key in ("DOMAIN", "DNS_PRIMARY", "STATUS_HOST"):
+    for key in ("DOMAIN", "DNS_PRIMARY_PROXY", "DNS_RESOLVERS", "STATUS_HOST"):
         if not os.environ.get(key):
             raise SystemExit(f"{key} must be set")
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))

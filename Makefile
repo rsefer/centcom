@@ -50,7 +50,7 @@ policy-check: ## Validate tailscale/policy.hujson and run its tests server-side 
 policy-apply: ## Replace the live Tailscale policy with tailscale/policy.hujson (shows diff, asks first)
 	python3 scripts/tailscale-policy.py apply
 
-generate: ## Regenerate Caddy routes, upstreams and dashboard services from services.toml
+generate: ## Regenerate routes, Compose bindings, environment files and dashboard services
 	python3 scripts/services.py generate
 
 dns-records: ## Print the proxy DNS records: make dns-records [PROXY=primary|standby] [BATCH=1]

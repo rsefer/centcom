@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 from pathlib import Path
 import struct
@@ -13,6 +14,30 @@ spec.loader.exec_module(checks)
 
 
 class ServiceChecksTests(unittest.TestCase):
+    def test_roles_and_resolvers_follow_registry_not_fixed_host_names(self):
+        config = copy.deepcopy(checks.registry.load())
+        config["proxy"] = {"primary": "southcom", "standby": "northcom"}
+        config["services"]["pihole"]["placement"] = [{"host": "eastcom"}]
+        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+                  "TAILSCALE_IP_EASTCOM": "100.64.0.2",
+                  "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
+        with mock.patch.object(checks.registry, "load", return_value=config), \
+             mock.patch.object(checks, "settings", return_value=values), \
+             mock.patch.object(checks, "dns_lookup", return_value=["100.64.0.3"]) as dns, \
+             mock.patch.object(checks, "check_url", return_value=200):
+            self.assertEqual(checks.main(), 0)
+        dns.assert_called_once_with("100.64.0.2", "rss.example.com")
+
+    def test_missing_resolver_addresses_fail_instead_of_skipping_dns_checks(self):
+        config = copy.deepcopy(checks.registry.load())
+        config["services"]["pihole"]["placement"] = [{"host": "eastcom"}]
+        with mock.patch.object(checks.registry, "load", return_value=config), \
+             mock.patch.object(checks, "settings", return_value={
+                 "DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+             }), mock.patch.object(checks, "dns_lookup") as dns:
+            self.assertEqual(checks.main(), 1)
+        dns.assert_not_called()
+
     def test_dns_query_checks_the_answer_address(self):
         class FakeSocket:
             def __enter__(self):

@@ -1,18 +1,15 @@
 services:
   status-agent:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: python:3.13-alpine
     command: ["python", "/app/status-agent.py"]
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
       STATUS_HOST: centcom
       DOMAIN: ${DOMAIN}
-      DNS_PRIMARY: ${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}
-      DNS_SECONDARY: ${TAILSCALE_IP_EASTCOM:-}
-      DNS_STANDBY_PROXY: ${TAILSCALE_IP_SOUTHCOM:-}
+    env_file:
+      - ../caddy/generated/status.env
     ports:
       - "${TAILSCALE_IP_NORTHCOM:-${TAILSCALE_IP:?Set TAILSCALE_IP or TAILSCALE_IP_NORTHCOM}}:18086:8080"
     volumes:
@@ -22,9 +19,6 @@ services:
       - ../../services.toml:/app/services.toml:ro
       - status_data:/state:ro
       - /var/lib/centcom-selfheal:/selfheal:ro
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
 volumes:
   status_data:

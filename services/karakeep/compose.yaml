@@ -4,13 +4,11 @@
 # (Admin > Background Jobs > Reindex) after a restore.
 services:
   karakeep:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: ghcr.io/karakeep-app/karakeep:release
     container_name: karakeep
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
       - DATA_DIR=/data
       - NEXTAUTH_URL=https://keep.${DOMAIN}
@@ -28,9 +26,6 @@ services:
     depends_on:
       - karakeep-chrome
       - karakeep-meili
-    networks:
-      - caddy_net
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
       interval: 60s
@@ -39,13 +34,11 @@ services:
       start_period: 60s
 
   karakeep-chrome:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: ghcr.io/karakeep-app/karakeep-chrome:release
     container_name: karakeep-chrome
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     init: true
     command:
       - --disable-gpu
@@ -54,27 +47,19 @@ services:
       - --disable-blink-features=AutomationControlled
       - --window-size=1440,900
     mem_limit: 1g
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
   karakeep-meili:
+    extends:
+      file: ../common/compose.yaml
+      service: networked-service
     image: getmeili/meilisearch:v1.41.0
     container_name: karakeep-meili
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
       - MEILI_NO_ANALYTICS=true
       - MEILI_MASTER_KEY=${KARAKEEP_MEILI_MASTER_KEY}
     volumes:
       - karakeep_meili:/meili_data
     mem_limit: 512m
-    networks:
-      - caddy_net
-    restart: unless-stopped
 
 volumes:
   karakeep_data:
