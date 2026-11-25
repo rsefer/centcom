@@ -121,6 +121,15 @@ class StatusAgentTests(unittest.TestCase):
                                return_value={"applications": {"rss": {"ok": True, "status": 200}}}):
             with urllib.request.urlopen(url + "/status/applications") as response:
                 self.assertEqual(json.load(response)["applications"]["rss"]["status"], 200)
+        with mock.patch.object(agent, "status", side_effect=AssertionError("must not probe DNS")) as status, \
+             mock.patch.object(agent, "applications_status",
+                               side_effect=AssertionError("must not probe applications")) as applications:
+            with urllib.request.urlopen(url + "/healthz") as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json.load(response), {"ok": True})
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+            status.assert_not_called()
+            applications.assert_not_called()
 
 
 if __name__ == "__main__":

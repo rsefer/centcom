@@ -5,6 +5,12 @@ services:
       service: networked-service
     image: python:3.13-alpine
     command: ["python", "/app/status-agent.py"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=5).close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     environment:
       STATUS_HOST: centcom
       DOMAIN: ${DOMAIN}

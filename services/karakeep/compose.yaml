@@ -47,6 +47,21 @@ services:
       - --disable-blink-features=AutomationControlled
       - --window-size=1440,900
     mem_limit: 1g
+    healthcheck:
+      # This image has Bash but no curl or wget.
+      test:
+        - CMD
+        - bash
+        - -ec
+        - |
+          exec 3<>/dev/tcp/127.0.0.1/9222
+          printf 'GET /json/version HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3
+          read -r -t 5 protocol code rest <&3
+          test "$$code" = 200
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   karakeep-meili:
     extends:
@@ -60,6 +75,12 @@ services:
     volumes:
       - karakeep_meili:/meili_data
     mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7700/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   karakeep_data:

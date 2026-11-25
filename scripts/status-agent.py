@@ -100,7 +100,9 @@ def applications_status():
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/":
+        if self.path == "/healthz":
+            result = {"ok": True}
+        elif self.path == "/":
             result = status()
         elif self.path == "/status/applications":
             result = applications_status()

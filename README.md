@@ -317,6 +317,14 @@ network and volume declarations in the consuming Compose files, since `extends`
 does not import those resources. Health checks and application-specific settings
 remain explicit.
 
+The status agent probes its lightweight `/healthz` endpoint, independent of DNS,
+backup and application checks. Karakeep's Chrome probes `/json/version` using
+Bash's TCP support (the image has no curl/wget); Meilisearch probes `/health`.
+Both dependency checks allow 60 seconds for startup. Excalidraw, OpenGym API,
+Pi-hole and Vaultwarden retain their image-provided health checks. Health status
+alone does not trigger Docker restarts; the existing self-heal timer restarts
+containers that stay unhealthy for five minutes.
+
 `services.toml` is the one place that lists hosts, services, where each runs,
 and its published port. Commit changes to this registry, not generated files.
 All output below is gitignored and generated during deployment. Run
