@@ -6,7 +6,7 @@ services:
     image: vaultwarden/server:1.37.5
     container_name: vaultwarden
     environment:
-      DOMAIN: https://vault.${DOMAIN}
+      DOMAIN: https://vault.${VPN_DOMAIN}
       SIGNUPS_ALLOWED: ${VAULTWARDEN_SIGNUPS_ALLOWED:-false}
       INVITATIONS_ALLOWED: "false"
       WEBSOCKET_ENABLED: "true"

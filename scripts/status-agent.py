@@ -63,7 +63,7 @@ def dns_status(server, primary, domain, standby=None):
 
 
 def status():
-    domain = os.environ["DOMAIN"]
+    domain = os.environ["VPN_DOMAIN"]
     primary = os.environ["DNS_PRIMARY_PROXY"]
     servers = json.loads(os.environ["DNS_RESOLVERS"])
     return {
@@ -88,7 +88,7 @@ def application_status(service, path, domain):
 
 
 def applications_status():
-    domain = os.environ["DOMAIN"]
+    domain = os.environ["VPN_DOMAIN"]
     applications = checks.registry.applications(checks.registry.load())
     with ThreadPoolExecutor(max_workers=len(applications)) as executor:
         futures = {
@@ -119,7 +119,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    for key in ("DOMAIN", "DNS_PRIMARY_PROXY", "DNS_RESOLVERS", "STATUS_HOST"):
+    for key in ("VPN_DOMAIN", "DNS_PRIMARY_PROXY", "DNS_RESOLVERS", "STATUS_HOST"):
         if not os.environ.get(key):
             raise SystemExit(f"{key} must be set")
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))

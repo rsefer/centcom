@@ -11,7 +11,7 @@ services:
     container_name: karakeep
     environment:
       - DATA_DIR=/data
-      - NEXTAUTH_URL=https://keep.${DOMAIN}
+      - NEXTAUTH_URL=https://keep.${VPN_DOMAIN}
       - NEXTAUTH_SECRET=${KARAKEEP_NEXTAUTH_SECRET}
       - MEILI_ADDR=http://karakeep-meili:7700
       - MEILI_MASTER_KEY=${KARAKEEP_MEILI_MASTER_KEY}

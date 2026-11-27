@@ -8,8 +8,8 @@ services:
     environment:
       - PORT=3000
       - DATA_DIR=/data
-      - RP_ID=gym.${DOMAIN}
-      - ORIGIN=https://gym.${DOMAIN}
+      - RP_ID=gym.${VPN_DOMAIN}
+      - ORIGIN=https://gym.${VPN_DOMAIN}
       - RP_NAME=openGym
       - TRUST_PROXY=1
       - FIRST_USER_ADMIN=1
@@ -41,7 +41,7 @@ services:
 
   # Upstream's optional MCP-over-HTTPS container (docs/MCP_REMOTE.md). Stateless: it holds no
   # data or secrets and talks to opengym-api with each request's scoped token. opengym-app
-  # proxies https://gym.${DOMAIN}/mcp to it. Enable with COMPOSE_PROFILES=mcp and MCP=on.
+  # proxies https://gym.${VPN_DOMAIN}/mcp to it. Enable with COMPOSE_PROFILES=mcp and MCP=on.
   opengym-mcp:
     extends:
       file: ../common/compose.yaml
@@ -53,7 +53,7 @@ services:
     environment:
       - MCP_PORT=3100
       - OPENGYM_API_URL=http://opengym-api:3000
-      - ORIGIN=https://gym.${DOMAIN}
+      - ORIGIN=https://gym.${VPN_DOMAIN}
     depends_on:
       opengym-api:
         condition: service_healthy

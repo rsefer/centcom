@@ -6,7 +6,7 @@ services:
     image: henrygd/beszel:latest
     container_name: beszel
     environment:
-      - APP_URL=https://beszel.${DOMAIN}
+      - APP_URL=https://beszel.${VPN_DOMAIN}
     ports:
       - "127.0.0.1:8090:8090"
     volumes:

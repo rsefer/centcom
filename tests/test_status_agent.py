@@ -48,7 +48,7 @@ class StatusAgentTests(unittest.TestCase):
                 self.assertEqual(agent.selfheal_status(), {"uptime_seconds": None, "events": []})
 
     def test_status_checks_both_resolvers_and_reports_failure(self):
-        env = {"STATUS_HOST": "northcom", "DOMAIN": "example.com",
+        env = {"STATUS_HOST": "northcom", "VPN_DOMAIN": "example.com",
                "DNS_PRIMARY_PROXY": "100.64.0.1",
                "DNS_RESOLVERS": json.dumps({"primary": "100.64.0.1", "secondary": "100.64.0.2"})}
         with mock.patch.dict(os.environ, env), \
@@ -63,7 +63,7 @@ class StatusAgentTests(unittest.TestCase):
         self.assertIn("timeout", status["dns"]["secondary"]["error"])
 
     def test_resolver_and_proxy_hosts_can_differ_and_optional_resolver_is_omitted(self):
-        env = {"STATUS_HOST": "southcom", "DOMAIN": "example.com",
+        env = {"STATUS_HOST": "southcom", "VPN_DOMAIN": "example.com",
                "DNS_PRIMARY_PROXY": "100.64.0.3",
                "DNS_RESOLVERS": json.dumps({"primary": "100.64.0.2", "secondary": ""})}
         with mock.patch.dict(os.environ, env), \
@@ -94,7 +94,7 @@ class StatusAgentTests(unittest.TestCase):
                 raise urllib.error.URLError("connection failed")
             return 302
 
-        with mock.patch.dict(os.environ, {"DOMAIN": "example.com"}), \
+        with mock.patch.dict(os.environ, {"VPN_DOMAIN": "example.com"}), \
              mock.patch.object(agent.checks, "check_url", side_effect=check):
             applications = agent.applications_status()["applications"]
         self.assertEqual(applications["ha"], {"ok": True, "status": 302})

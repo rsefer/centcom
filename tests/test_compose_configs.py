@@ -25,7 +25,7 @@ class ComposeConfigTests(unittest.TestCase):
                    TAILSCALE_IP_SOUTHCOM="100.97.91.90",
                    TAILSCALE_IP_EASTCOM="100.127.122.57",
                    PIHOLE_NORTHCOM_PASSWORD="primary-test",
-                   PIHOLE_EASTCOM_PASSWORD="replica-test", DOMAIN="example.com")
+                   PIHOLE_EASTCOM_PASSWORD="replica-test", VPN_DOMAIN="example.com")
         result = subprocess.run(
             ["docker", "compose", "--env-file", ".env.sample",
              "-f", "docker-compose.yml" if host == "single" else f"docker-compose.{host}.yml",

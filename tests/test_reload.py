@@ -78,7 +78,7 @@ class ReloadTests(unittest.TestCase):
                                        "compose build", "compose up -d --remove-orphans"])
         self.assertIn("compose up -d --no-deps --force-recreate caddy", commands)
         routes = (self.root / "services/caddy/generated/routes.caddy").read_text()
-        self.assertIn("gym.{$DOMAIN}", routes)
+        self.assertIn("gym.{$VPN_DOMAIN}", routes)
         self.assertNotIn("gym-mcp", routes)
 
     def test_rollback_skips_image_pull(self):

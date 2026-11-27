@@ -67,7 +67,7 @@ replica, not northcom's administrative session. Southcom stores and renews its
 own public TLS certificates using the existing Route 53 DNS challenge credentials.
 
 Before an outage, from a tailnet-connected client with `curl`, run
-`make check-proxy DOMAIN=<domain> PROXY_IP=<southcom-tailscale-ip>`. This keeps
+`make check-proxy VPN_DOMAIN=<domain> PROXY_IP=<southcom-tailscale-ip>`. This keeps
 the original HTTPS hostnames and validates certificates while directing requests
 to southcom without changing DNS. Initial certificate issuance can take several
 minutes. To include probes marked `optional` in `services.toml`, set `CHECK_OPTIONAL=1`
@@ -91,7 +91,7 @@ If northcom fails:
    resolver caches and existing connections can delay recovery. If resolution
    is stale, use the direct proxy check while caches expire.
 4. Once northcom is healthy, check it directly with `make check-proxy
-   DOMAIN=<domain> PROXY_IP=<northcom-tailscale-ip>`, reverse the same Route 53
+   VPN_DOMAIN=<domain> PROXY_IP=<northcom-tailscale-ip>`, reverse the same Route 53
    changes, and verify both resolvers and service URLs with
    `make check-services`. The command reports a failed northcom resolver
    during an outage even when southcom is serving traffic.

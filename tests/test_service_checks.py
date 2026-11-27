@@ -18,7 +18,7 @@ class ServiceChecksTests(unittest.TestCase):
         config = copy.deepcopy(checks.registry.load())
         config["proxy"] = {"primary": "southcom", "standby": "northcom"}
         config["services"]["pihole"]["placement"] = [{"host": "eastcom"}]
-        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+        values = {"VPN_DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
                   "TAILSCALE_IP_EASTCOM": "100.64.0.2",
                   "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
         with mock.patch.object(checks.registry, "load", return_value=config), \
@@ -33,7 +33,7 @@ class ServiceChecksTests(unittest.TestCase):
         config["services"]["pihole"]["placement"] = [{"host": "eastcom"}]
         with mock.patch.object(checks.registry, "load", return_value=config), \
              mock.patch.object(checks, "settings", return_value={
-                 "DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+                 "VPN_DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
              }), mock.patch.object(checks, "dns_lookup") as dns:
             self.assertEqual(checks.main(), 1)
         dns.assert_not_called()
@@ -66,7 +66,7 @@ class ServiceChecksTests(unittest.TestCase):
                              ["100.64.0.1"])
 
     def test_checks_fail_for_wrong_dns_or_unavailable_service(self):
-        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+        values = {"VPN_DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
                   "TAILSCALE_IP_EASTCOM": "100.64.0.2"}
         with mock.patch.object(checks, "settings", return_value=values), \
              mock.patch.object(checks, "dns_lookup", return_value=["100.64.0.9"]), \
@@ -78,7 +78,7 @@ class ServiceChecksTests(unittest.TestCase):
             self.assertEqual(checks.main(), 1)
 
     def test_standby_is_accepted_when_both_resolvers_agree(self):
-        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+        values = {"VPN_DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
                   "TAILSCALE_IP_EASTCOM": "100.64.0.2",
                   "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
         with mock.patch.object(checks, "settings", return_value=values), \
@@ -87,7 +87,7 @@ class ServiceChecksTests(unittest.TestCase):
             self.assertEqual(checks.main(), 0)
 
     def test_resolver_disagreement_and_multiple_addresses_fail(self):
-        values = {"DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
+        values = {"VPN_DOMAIN": "example.com", "TAILSCALE_IP_NORTHCOM": "100.64.0.1",
                   "TAILSCALE_IP_EASTCOM": "100.64.0.2",
                   "TAILSCALE_IP_SOUTHCOM": "100.64.0.3"}
         for answers in ([["100.64.0.1"], ["100.64.0.3"]],

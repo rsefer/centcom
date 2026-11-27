@@ -59,8 +59,8 @@ generate: ## Regenerate routes, Compose bindings, environment files and dashboar
 dns-records: ## Print the proxy DNS records: make dns-records [PROXY=primary|standby] [BATCH=1]
 	python3 scripts/services.py dns $(or $(PROXY),primary) $(if $(BATCH),--change-batch)
 
-check-proxy: ## Check a proxy directly: make check-proxy DOMAIN=example.com PROXY_IP=100.x.x.x
-	sh scripts/check-proxy.sh "$(DOMAIN)" "$(PROXY_IP)"
+check-proxy: ## Check a proxy directly: make check-proxy VPN_DOMAIN=example.com PROXY_IP=100.x.x.x
+	sh scripts/check-proxy.sh "$(VPN_DOMAIN)" "$(PROXY_IP)"
 
 install-dns-failover: ## Install the Pi-hole to Tailscale DNS failover timer (run on southcom)
 	./scripts/install-dns-failover.sh

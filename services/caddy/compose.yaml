@@ -29,7 +29,7 @@ services:
     env_file:
       - ./generated/single.env
     environment:
-      - DOMAIN=${DOMAIN}
+      - VPN_DOMAIN=${VPN_DOMAIN}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}

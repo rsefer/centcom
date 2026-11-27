@@ -93,11 +93,11 @@ def main():
     except (OSError, ValueError) as error:
         print(f"services.toml: {error}", file=sys.stderr)
         return 1
-    domain = values.get("DOMAIN", "")
+    domain = values.get("VPN_DOMAIN", "")
     primary = registry.host_ip(config, values, config["proxy"]["primary"])
     standby = registry.host_ip(config, values, config["proxy"]["standby"])
     if not domain or not primary:
-        print(f"Set DOMAIN and {registry.ip_var(config['proxy']['primary'])} "
+        print(f"Set VPN_DOMAIN and {registry.ip_var(config['proxy']['primary'])} "
               "(or TAILSCALE_IP) in .env", file=sys.stderr)
         return 1
     failed = False

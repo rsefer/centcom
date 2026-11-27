@@ -94,12 +94,12 @@ class ServicesTests(unittest.TestCase):
     def test_env_parser_and_overrides_preserve_file_values(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / ".env"
-            path.write_text('# ignored=value\nDOMAIN="file.example"\n'
+            path.write_text('# ignored=value\nVPN_DOMAIN="file.example"\n'
                             "TAILSCALE_IP_NEW_HOST='100.1.1.1'\nOTHER=file\n")
             self.assertEqual(registry.read_env(path, environment={
-                "DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
+                "VPN_DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
                 "OTHER": "process",
-            }), {"DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
+            }), {"VPN_DOMAIN": "process.example", "TAILSCALE_IP_NEW_HOST": "100.1.1.2",
                  "OTHER": "file"})
 
     def test_bindings_follow_placement_ports_and_base_directory(self):
@@ -135,9 +135,9 @@ class ServicesTests(unittest.TestCase):
 
     def test_routes_derive_services_hosts_and_status_container(self):
         routes = registry.caddy_routes(SAMPLE)
-        self.assertIn("app.{$DOMAIN} {\n  import access_log\n"
+        self.assertIn("app.{$VPN_DOMAIN} {\n  import access_log\n"
                       "  reverse_proxy {$APP_UPSTREAM}\n}", routes)
-        self.assertIn("ext.{$DOMAIN} {\n  import access_log\n"
+        self.assertIn("ext.{$VPN_DOMAIN} {\n  import access_log\n"
                       "  import ts_upstream machine\n}", routes)
         self.assertIn("handle /status/applications {\n    reverse_proxy status:80\n", routes)
         for host in SAMPLE["hosts"]:
@@ -158,7 +158,7 @@ class ServicesTests(unittest.TestCase):
 
     def test_change_batch_upserts_apex_and_wildcard(self):
         host, records = registry.dns_records(
-            SAMPLE, "standby", {"DOMAIN": "vpn.example.com", "TAILSCALE_IP_B": "100.1.1.2"})
+            SAMPLE, "standby", {"VPN_DOMAIN": "vpn.example.com", "TAILSCALE_IP_B": "100.1.1.2"})
         batch = registry.change_batch(host, records)
         names = [c["ResourceRecordSet"]["Name"] for c in batch["Changes"]]
         self.assertEqual(names, ["vpn.example.com.", "*.vpn.example.com."])
@@ -192,10 +192,10 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("import generated/routes.caddy",
                       (ROOT / "services/caddy/Caddyfile").read_text())
         caddyfile = registry.caddy_routes(self.config)
-        sites = set(re.findall(r"^([a-z0-9-]+)\.\{\$DOMAIN\} \{", caddyfile, re.M))
+        sites = set(re.findall(r"^([a-z0-9-]+)\.\{\$VPN_DOMAIN\} \{", caddyfile, re.M))
         self.assertEqual(sites, set(self.config["services"]))
         for name, service in self.config["services"].items():
-            block = re.search(rf"^{name}\.\{{\$DOMAIN\}} \{{\n(.*?)^\}}", caddyfile, re.M | re.S)
+            block = re.search(rf"^{name}\.\{{\$VPN_DOMAIN\}} \{{\n(.*?)^\}}", caddyfile, re.M | re.S)
             if "tailnet" in service:
                 self.assertIn(f"import ts_upstream {service['tailnet']}\n", block.group(1))
             else:

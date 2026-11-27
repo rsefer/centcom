@@ -260,7 +260,7 @@ def pihole_sync_env(config):
 def caddy_routes(config):
     """Dashboard and service routes, shared by every proxy."""
     lines = [HEADER.rstrip(), "", "# Dashboard static server",
-             "{$DOMAIN}, http:// {", "  import access_log",
+             "{$VPN_DOMAIN}, http:// {", "  import access_log",
              "  handle /status/applications {",
              f"    reverse_proxy {config['status']['container']}", "  }"]
     for host in config["hosts"]:
@@ -271,7 +271,7 @@ def caddy_routes(config):
     for name, service in config["services"].items():
         proxy = (f"import ts_upstream {service['tailnet']}" if "tailnet" in service
                  else "reverse_proxy {$%s_UPSTREAM}" % env_name(name))
-        lines.extend(["", "%s.{$DOMAIN} {" % name, "  import access_log"])
+        lines.extend(["", "%s.{$VPN_DOMAIN} {" % name, "  import access_log"])
         if "proxy_path" in service:
             lines.extend([f"  handle {service['proxy_path']} {{", f"    {proxy}", "  }",
                           "  handle {", '    respond "Not found" 404', "  }"])
@@ -319,16 +319,16 @@ def read_env(path=None, environment=None):
     env_file = Path(path) if path is not None else ROOT / ".env"
     values = parse_env(env_file.read_text()) if env_file.exists() else {}
     environment = os.environ if environment is None else environment
-    values.update({key: value for key, value in environment.items() if key == "DOMAIN"
+    values.update({key: value for key, value in environment.items() if key == "VPN_DOMAIN"
                    or key.startswith("TAILSCALE_IP")})
     return values
 
 
 def dns_records(config, which, env):
     host = config["proxy"][which]
-    domain, address = env.get("DOMAIN"), env.get(ip_var(host))
+    domain, address = env.get("VPN_DOMAIN"), env.get(ip_var(host))
     if not domain or not address:
-        raise ValueError(f"Set DOMAIN and {ip_var(host)} in .env")
+        raise ValueError(f"Set VPN_DOMAIN and {ip_var(host)} in .env")
     return host, [(domain, address), (f"*.{domain}", address)]
 
 
@@ -363,7 +363,7 @@ def main(argv):
             print(f"Proxy {which} ({host}): point these A records at its Tailscale IP")
             for name, address in records:
                 print(f"  {name}\tA\t{address}")
-            domain = env["DOMAIN"]
+            domain = env["VPN_DOMAIN"]
             print("Hostnames served (covered by the wildcard unless an exact record exists;"
                   " exact records override it and must be changed too):")
             for label in ["", *config["services"]]:
