@@ -1,81 +1,14 @@
-import os
-from pathlib import Path
-import shutil
 import subprocess
-import tempfile
 import unittest
 
-
-DEPLOY_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "remote-deploy.sh"
-COMMIT_MESSAGE = "Fixture\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+from remote_fixture import COMMIT_MESSAGE, RemoteHostsFixture
 
 
-class RemoteDeployTests(unittest.TestCase):
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.work = self.root / "work"
-        self.work.mkdir()
-        self.git("init", "-b", "main")
-        self.git("config", "user.name", "Test")
-        self.git("config", "user.email", "test@example.invalid")
-        (self.work / "scripts").mkdir()
-        shutil.copy(DEPLOY_SCRIPT, self.work / "scripts" / "remote-deploy.sh")
-        for name in ("setup-cron.sh", "reload.sh"):
-            script = self.work / "scripts" / name
-            script.write_text('#!/bin/sh\nprintf "%s %s\\n" "$TEST_HOST" "' + name +
-                              '" >> "$TEST_LOG"\n')
-            script.chmod(0o755)
-        (self.work / "scripts" / "check-services.py").write_text(
-            "import os\n"
-            "with open(os.environ['TEST_LOG'], 'a') as log:\n"
-            "    log.write(os.environ['TEST_HOST'] + ' check-services.py\\n')\n"
-            "raise SystemExit(int(os.environ.get('CHECK_FAIL', '0')))\n"
-        )
-        for host in ("northcom", "southcom"):
-            (self.work / f"docker-compose.{host}.yml").write_text("services: {}\n")
-        (self.work / ".gitignore").write_text("compose.yaml\n")
-        self.git("add", ".")
-        self.git("commit", "-m", COMMIT_MESSAGE)
-        self.origin = self.root / "origin.git"
-        subprocess.run(["git", "init", "--bare", "-b", "main", str(self.origin)],
-                       check=True, stdout=subprocess.DEVNULL)
-        self.git("remote", "add", "origin", str(self.origin))
-        self.git("push", "-u", "origin", "main")
-        self.homes = self.root / "homes"
-        for host in ("northcom", "southcom"):
-            home = self.homes / host
-            home.mkdir(parents=True)
-            subprocess.run(["git", "clone", "-q", str(self.origin), str(home / "centcom")],
-                           check=True)
-            (home / "centcom" / "compose.yaml").symlink_to(f"docker-compose.{host}.yml")
-        self.bin = self.root / "bin"
-        self.bin.mkdir()
-        ssh = self.bin / "ssh"
-        ssh.write_text(
-            "#!/bin/sh\n"
-            "while [ \"$#\" -gt 0 ]; do\n"
-            "  case \"$1\" in northcom.local|southcom.local) break;; esac\n"
-            "  shift\n"
-            "done\n"
-            'host="${1%.local}"\n'
-            "shift\n"
-            'printf "connect %s\\n" "$host" >> "$TEST_LOG"\n'
-            '[ "$host" != "${FAIL_HOST:-}" ] || exit 1\n'
-            'HOME="$TEST_HOMES/$host" TEST_HOST="$host" "$@"\n'
-        )
-        ssh.chmod(0o755)
-        systemctl = self.bin / "systemctl"
-        systemctl.write_text("#!/bin/sh\nexit 0\n")
-        systemctl.chmod(0o755)
-        self.log = self.root / "log"
-        self.env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}",
-                        TEST_LOG=str(self.log), TEST_HOMES=str(self.homes))
-
-    def git(self, *args):
-        return subprocess.run(["git", *args], cwd=self.work, check=True,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+class RemoteDeployTests(RemoteHostsFixture):
+    def previous(self, host):
+        return subprocess.check_output(
+            ["git", "rev-parse", "refs/centcom/previous-deploy"],
+            cwd=self.homes / host / "centcom", text=True).strip()
 
     def deploy(self, **env):
         return subprocess.run(["sh", "scripts/remote-deploy.sh"], cwd=self.work,
@@ -103,6 +36,19 @@ class RemoteDeployTests(unittest.TestCase):
                 cwd=self.homes / host / "centcom", text=True,
             ).strip()
             self.assertEqual(actual, expected)
+
+    def test_records_previous_commit_only_when_head_moves(self):
+        first = self.head("northcom")
+        second = self.publish("second")
+        self.assertEqual(self.deploy().returncode, 0)
+        self.assertEqual(self.previous("northcom"), first)
+        self.assertEqual(self.deploy().returncode, 0)
+        self.assertEqual(self.previous("northcom"), first)
+        self.assertEqual(self.head("northcom"), second)
+        third = self.publish("third")
+        self.assertEqual(self.deploy().returncode, 0)
+        self.assertEqual(self.previous("southcom"), second)
+        self.assertEqual(self.head("southcom"), third)
 
     def test_failed_service_check_fails_deployment(self):
         result = self.deploy(CHECK_FAIL="1")

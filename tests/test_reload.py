@@ -81,6 +81,14 @@ class ReloadTests(unittest.TestCase):
         self.assertIn("gym.{$DOMAIN}", routes)
         self.assertNotIn("gym-mcp", routes)
 
+    def test_rollback_skips_image_pull(self):
+        self.env["RELOAD_SKIP_PULL"] = "1"
+        result = self.reload()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = self.log.read_text().splitlines()
+        self.assertEqual(commands[:2], ["compose build", "compose up -d --remove-orphans"])
+        self.assertNotIn("compose pull --ignore-buildable", commands)
+
     def test_generation_failure_stops_before_docker(self):
         (self.root / "services.toml").write_text('hosts = []\n')
         result = self.reload()

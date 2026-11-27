@@ -43,7 +43,11 @@ wait_for_service() {
 
 # Generate Caddy routes/upstreams and dashboard data before building or starting services.
 python3 scripts/services.py generate
-docker compose pull --ignore-buildable
+# A rollback sets RELOAD_SKIP_PULL so it restores configuration without
+# fetching newer images.
+if [ -z "${RELOAD_SKIP_PULL:-}" ]; then
+	docker compose pull --ignore-buildable
+fi
 docker compose build
 docker compose up -d --remove-orphans
 

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy rollback check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -25,6 +25,9 @@ reload: ## Pull, build, and restart the full stack (run on the Pi)
 
 deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host] [BRANCH=main]
 	./scripts/remote-deploy.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)"
+
+rollback: ## Return hosts to their previous deploy (or a commit) without pulling images: make rollback [HOST=host] [BRANCH=main] [TO=commit]
+	./scripts/remote-rollback.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)" "$(TO)"
 
 check-hosts: ## Report drift between hosts (read-only): make check-hosts [HOST=host] [BRANCH=main]
 	python3 scripts/check-hosts.py "$(or $(HOST),all)" "$(or $(BRANCH),main)"

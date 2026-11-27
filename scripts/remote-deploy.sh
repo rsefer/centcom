@@ -102,7 +102,13 @@ for host in $HOSTS; do
 		echo "Refusing deploy: remote working tree changed after preflight" >&2
 		exit 1
 	fi
+	# Remember where this host was so `make rollback` can return to it. A ref
+	# keeps the working tree clean and is only moved when HEAD changes.
+	before="$(git rev-parse HEAD)"
 	git merge --ff-only "$1"
+	if [ "$(git rev-parse HEAD)" != "$before" ]; then
+		git update-ref refs/centcom/previous-deploy "$before"
+	fi
 	./scripts/setup-cron.sh
 	./scripts/reload.sh
 REMOTE

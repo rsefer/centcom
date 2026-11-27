@@ -112,6 +112,34 @@ are not compared by digest across hosts, and hashes assume the same
 drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and
 skips the symlink expectation like `make deploy`.
 
+### Rolling back
+
+`make rollback` undoes a bad deploy. Each `make deploy` records the commit a host
+was running before it moved, in the git ref `refs/centcom/previous-deploy` (a ref,
+so the working tree stays clean). Rollback uses the same discovery and preflight
+as deploy, checking every host before changing any. It then runs
+`git reset --hard` to the earlier commit, reinstalls cron and reloads the stack.
+
+- `make rollback` returns every host to the commit it ran before its last deploy.
+  If hosts would return to different commits (for example after a single-host
+  deploy), it stops and asks for `TO=<commit>`.
+- `make rollback HOST=southcom.local` rolls back one SSH host.
+- `make rollback TO=<commit>` rolls all hosts to a specific commit. It must be
+  an ancestor of what each host is running. Use `git log` locally to pick one.
+- It refuses when a host's tree is dirty, a host is unreachable, the target is
+  the current commit, or no previous deploy is recorded (hosts that have not
+  deployed since this feature was added).
+- A rollback restores configuration and code only. It runs `reload.sh` with
+  `RELOAD_SKIP_PULL=1`, so it does not pull images, and containers keep whatever
+  image version they already have. Images tagged `latest` are not reverted;
+  pin the version in Compose to roll an application back. Data volumes are
+  never touched, so restore a backup separately if a release migrated data.
+- The hosts end up behind `origin/main`, which `make check-hosts` reports as drift.
+  Fix the problem and `make deploy` to roll forward, or revert the bad commit
+  and push it. A second rollback stops rather than flipping back.
+- Like deploy, it checks DNS and service URLs from the last host afterwards, and
+  hosts already rolled back stay that way if a later host fails.
+
 ### Adding or replacing a host
 
 `make new-host HOST=<name>` turns a freshly flashed Pi into a working host from
