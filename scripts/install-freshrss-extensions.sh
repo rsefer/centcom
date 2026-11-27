@@ -2,7 +2,8 @@
 # Install the FreshRSS extensions pinned in services/freshrss/extensions.conf
 # into ./extensions. Idempotent: an extension already at its pinned commit is
 # left alone. A commit of "latest" tracks the repository's default branch.
-# Extensions not listed in the manifest are never touched.
+# Extensions this script installed earlier (marked by .centcom-ref) are removed
+# once they leave the manifest; extensions it did not install are never touched.
 
 set -eu
 
@@ -32,6 +33,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 failed=0
+wanted=" "
 while read -r repo sha subdir extra; do
 	case "$repo" in ''|'#'*) continue ;; esac
 	if [ -z "$sha" ] || [ -z "$subdir" ] || [ -n "$extra" ]; then
@@ -55,6 +57,7 @@ while read -r repo sha subdir extra; do
 		name="$(basename "$subdir")"
 	fi
 	target="$DEST/$name"
+	wanted="$wanted$name "
 	marker="$sha"
 	if [ -f "$target/.centcom-ref" ] && [ "$(cat "$target/.centcom-ref")" = "$marker" ]; then
 		echo "FreshRSS extension $name already at ${sha%"${sha#???????}"}"
@@ -84,5 +87,17 @@ while read -r repo sha subdir extra; do
 	rm -rf "$target"
 	mv "$stage" "$target"
 done < "$MANIFEST"
+
+# Prune extensions we installed that are no longer in the manifest. Skipped when
+# any line failed, so a typo never deletes a working extension.
+if [ "$failed" = 0 ]; then
+	for dir in "$DEST"/*/; do
+		[ -f "${dir}.centcom-ref" ] || continue
+		name="$(basename "$dir")"
+		case "$wanted" in *" $name "*) continue ;; esac
+		echo "Removing FreshRSS extension $name (no longer in the manifest)"
+		rm -rf "$DEST/$name"
+	done
+fi
 
 exit "$failed"

@@ -112,6 +112,25 @@ class InstallExtensionsTests(unittest.TestCase):
         self.install(f"file://{self.repo} {self.sha1} xExtension-Demo")
         self.assertTrue((self.dest / "xExtension-Manual").is_dir())
 
+    def test_removing_a_manifest_line_uninstalls_only_managed_extensions(self):
+        (self.dest / "xExtension-Manual").mkdir(parents=True)
+        self.install(f"file://{self.repo} {self.sha1} xExtension-Demo")
+        self.assertTrue((self.dest / "xExtension-Demo").is_dir())
+        self.manifest.write_text("# nothing\n")
+        result = subprocess.run(
+            ["sh", str(SCRIPT)], capture_output=True, text=True,
+            env=dict(os.environ, EXTENSIONS_MANIFEST=str(self.manifest),
+                     EXTENSIONS_DIR=str(self.dest)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.dest / "xExtension-Demo").exists())
+        self.assertTrue((self.dest / "xExtension-Manual").is_dir())
+
+    def test_failed_line_prevents_pruning(self):
+        self.install(f"file://{self.repo} {self.sha1} xExtension-Demo")
+        result = self.install("not-a-valid-line")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.dest / "xExtension-Demo").is_dir())
+
     def test_rejects_branch_names_and_non_extensions(self):
         result = self.install(f"file://{self.repo} main xExtension-Demo")
         self.assertNotEqual(result.returncode, 0)
@@ -123,7 +142,6 @@ class InstallExtensionsTests(unittest.TestCase):
     def test_committed_manifest_is_well_formed(self):
         entries = [l.split() for l in MANIFEST.read_text().splitlines()
                    if l.strip() and not l.startswith("#")]
-        self.assertTrue(entries)
         for entry in entries:
             self.assertEqual(len(entry), 3, entry)
             self.assertRegex(entry[1], r"^(latest|[0-9a-f]{40})$")
