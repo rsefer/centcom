@@ -58,6 +58,11 @@ fi
 if printf '%s\n' "$services" | grep -Fxq caddy; then
 	docker compose up -d --no-deps --force-recreate caddy
 fi
+# FreshRSS reads ./extensions on every request, so no restart is needed. A
+# failed install (e.g. GitHub unreachable) must not abort the rest of the reload.
+if printf '%s\n' "$services" | grep -Fxq rss; then
+	sh scripts/install-freshrss-extensions.sh || echo "Warning: FreshRSS extension install failed"
+fi
 for service in caddy rss pihole; do
 	if printf '%s\n' "$services" | grep -Fxq "$service"; then
 		wait_for_service "$service" 90

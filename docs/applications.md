@@ -20,6 +20,11 @@ set it back to `false` and deploy again. Keep signups closed.
 - Agents use host networking and the read-only Docker socket for host and container metrics. The southcom agent connects over a shared Unix socket. The northcom and eastcom agents listen for authenticated SSH on their Tailscale IPs, port 45876, using the hub's public key; they do not use WebSocket tokens.
 - Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the shared `.env` using the values provided by the hub for its local agent. In the hub, add or rename the local system to `southcom` with Host / IP `/beszel_socket/beszel.sock`. Add `northcom` and `eastcom` systems with their respective Tailscale IPs and port `45876`. For additional hosts, run an agent on each and add a separate system.
 
+## FreshRSS extensions
+- Extensions are declared in `services/freshrss/extensions.conf` as `<repo URL> <latest | full commit SHA> <directory in repo>`. `scripts/reload.sh` runs `scripts/install-freshrss-extensions.sh` on hosts that run FreshRSS, which fetches each extension into `extensions/`, skipping any already at the wanted commit. `latest` (the default) installs the repository's current default-branch commit on every reload, so extensions update whenever you deploy or reload. Extensions run as PHP inside FreshRSS, so to freeze one, replace `latest` with a full commit SHA. Extensions not in the manifest are left alone. A failed install logs a warning and does not abort the reload.
+- Currently installed: [Title Dedup](https://github.com/chenhaoc/freshrss-dedup-extension), which marks entries in a target feed as read when the same title already appeared in a source feed.
+- After the first deploy, enable each new extension once under FreshRSS Settings > Extensions, then configure it there. Enabled state and rules live in `data/`, which the backup includes. `extensions/` is also archived, so manually installed extensions survive a restore, and the next reload re-applies the pins.
+
 ## Excalidraw
 - Excalidraw is available at `https://draw.${VPN_DOMAIN}` through Caddy.
 - Drawings autosave in the browser, not in a server volume. Export `.excalidraw` files to back them up or move them between devices.
