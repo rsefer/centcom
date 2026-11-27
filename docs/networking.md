@@ -85,16 +85,16 @@ restores the timer, provided the shared `.env` carries the `TS_DNS_OAUTH_*`,
 ## Tailscale DNS and the wildcard record
 - Custom Tailscale nameservers can cause a troubleshooting loop if DNS is unavailable. Before enabling them, verify both Pi-hole resolvers and retain a way to restore DNS or connect by IP.
 - To avoid creating an A record for every service, add one wildcard A record in Route 53:
-	- Record name: `*.vpn` when the hosted zone is `rsefer.com`, or `*` when the hosted zone is `vpn.rsefer.com`.
+	- Record name: `*.<subdomain>` when the hosted zone is the parent domain (for `DOMAIN=vpn.example.com` in the `example.com` zone, that is `*.vpn`), or `*` when the hosted zone is `${DOMAIN}` itself.
 	- Value: the `centcom` Tailscale IPv4 address from `tailscale ip -4`.
 	- TTL: 300 seconds is a reasonable value.
-- The wildcard makes new one-level hostnames such as `rss.vpn.rsefer.com` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
+- The wildcard makes new one-level hostnames such as `rss.${DOMAIN}` resolve to `centcom`. Existing exact records take precedence and can be removed after confirming the wildcard works.
 - DNS only resolves the hostname; Caddy routes requests to the services. In the single-host deployment they share a Docker network; in the split deployment Caddy reaches southcom over Tailscale. Caddy's HTTP/HTTPS ports and Pi-hole's DNS ports bind only to northcom's Tailscale IP. The Pi-hole web UI has no directly published port; app upstream ports are reachable directly over Tailscale.
 
 ## Public trusted TLS (DNS challenge)
-- This repo is configured for DNS-01 ACME via Route53 so `*.vpn.rsefer.com` can use publicly trusted certificates.
+- This repo is configured for DNS-01 ACME via Route53 so `*.${DOMAIN}` can use publicly trusted certificates.
 - Caddy is built locally from [services/caddy/Dockerfile](../services/caddy/Dockerfile) to include the Route53 DNS plugin.
-- Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `ROUTE53_HOSTED_ZONE_ID` (the public Route 53 hosted zone ID for `rsefer.com`).
+- Add these to `.env`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `ROUTE53_HOSTED_ZONE_ID` (the public Route 53 hosted zone ID for the zone that contains `${DOMAIN}`).
 - The IAM principal should have Route53 permissions to list zones and change DNS records for your hosted zone.
 - Example IAM policy (replace `YOUR_HOSTED_ZONE_ID`):
 
@@ -126,4 +126,4 @@ restores the timer, provided the shared `.env` carries the `TS_DNS_OAUTH_*`,
 ```
 - Redeploy with `docker compose pull --ignore-buildable && docker compose build caddy && docker compose up -d --remove-orphans`.
 - Check issuance with `docker compose logs -f caddy` and look for successful certificate obtain events.
-- If issuance fails after an interrupted attempt, delete any stale `_acme-challenge.*` TXT records in Route53 for `vpn.domain.com`, and any `*.vpn.domain.com`, then restart Caddy.
+- If issuance fails after an interrupted attempt, delete any stale `_acme-challenge.*` TXT records in Route53 for `${DOMAIN}`, and any `*.${DOMAIN}`, then restart Caddy.
