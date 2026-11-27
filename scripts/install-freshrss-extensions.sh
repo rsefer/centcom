@@ -12,7 +12,21 @@ MANIFEST="${EXTENSIONS_MANIFEST:-$ROOT_DIR/services/freshrss/extensions.conf}"
 DEST="${EXTENSIONS_DIR:-$ROOT_DIR/extensions}"
 
 [ -f "$MANIFEST" ] || exit 0
-mkdir -p "$DEST"
+mkdir -p "$DEST" 2>/dev/null || true
+
+# Docker creates ./extensions as root when the directory is missing, so the
+# deploying user cannot write to it. Hand it to that user (group www-data, which
+# FreshRSS runs as) through the running container; docker group membership is
+# enough, no sudo needed.
+if [ ! -w "$DEST" ] && [ "$DEST" = "$ROOT_DIR/extensions" ]; then
+	echo "Fixing ownership of $DEST"
+	(cd "$ROOT_DIR" && docker compose exec -T -u root rss \
+		chown "$(id -u):33" /var/www/FreshRSS/extensions) || true
+fi
+if [ ! -w "$DEST" ]; then
+	echo "✗ $DEST is not writable by $(id -un)" >&2
+	exit 1
+fi
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

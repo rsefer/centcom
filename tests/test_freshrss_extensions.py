@@ -69,6 +69,35 @@ class InstallExtensionsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((self.dest / "xExtension-Demo/extension.php").read_text(), "v2")
 
+    def test_unwritable_extensions_dir_is_handed_over_via_docker(self):
+        if os.geteuid() == 0:
+            self.skipTest("root can write anywhere")
+        root = self.root / "host"
+        (root / "scripts").mkdir(parents=True)
+        (root / "services/freshrss").mkdir(parents=True)
+        script = root / "scripts/install-freshrss-extensions.sh"
+        script.write_text(SCRIPT.read_text())
+        ext = root / "extensions"
+        ext.mkdir()
+        ext.chmod(0o555)
+        self.addCleanup(ext.chmod, 0o755)
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        docker = bin_dir / "docker"
+        docker.write_text(
+            '#!/bin/sh\necho "$*" >> "$TEST_LOG"\nchmod 755 "$TEST_EXT"\n')
+        docker.chmod(0o755)
+        (root / "services/freshrss/extensions.conf").write_text(
+            f"file://{self.repo} {self.sha1} xExtension-Demo\n")
+        log = root / "docker.log"
+        result = subprocess.run(
+            ["sh", str(script)], capture_output=True, text=True,
+            env=dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}",
+                     TEST_LOG=str(log), TEST_EXT=str(ext)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("exec -T -u root rss chown", log.read_text())
+        self.assertTrue((ext / "xExtension-Demo/extension.php").exists())
+
     def test_unchanged_pin_is_not_reinstalled(self):
         line = f"file://{self.repo} {self.sha1} xExtension-Demo"
         self.install(line)
