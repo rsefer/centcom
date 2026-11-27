@@ -1,6 +1,6 @@
 # Agents Instructions
 
-This document serves as a guide to leveraging agents for working within this repo. See `README.md` for more information. Below are the essential instructions and guidelines:
+This document serves as a guide to leveraging agents for working within this repo. See `README.md` and the topic guides in `docs/` for more information. Below are the essential instructions and guidelines:
 
 ## Approach
 - Think before acting. Read existing files before writing code.

@@ -21,7 +21,7 @@
 hosts = ["northcom", "southcom", "eastcom"]
 
 # Hosts running Caddy: DNS normally points at `primary`; `standby` is the
-# manual failover target (see README).
+# manual failover target (see docs/resilience.md).
 [proxy]
 primary = "northcom"
 standby = "southcom"
