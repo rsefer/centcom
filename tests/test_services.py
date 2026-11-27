@@ -223,7 +223,6 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         lines = [line.split("\t") for line in result.stdout.splitlines()]
         self.assertEqual(lines[0], ["dashboard", "/", ""])
-        self.assertIn(["gym-mcp", "/mcp", "optional"], lines)
 
     def test_dashboard_data_covers_status_probes(self):
         data = json.loads(registry.dashboard_json(self.config))

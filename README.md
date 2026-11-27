@@ -106,7 +106,7 @@ checked-out files, anything a `docker compose up -d --dry-run` would still
 change (such as a newer image), and registry digests for images shared across
 hosts. It also flags services that are missing, stopped, or no longer in the
 config. A stale config hash or a pending change means the host needs
-`make reload`. Locally built images (Caddy, openGym MCP)
+`make reload`. Locally built images (Caddy)
 are not compared by digest across hosts, and hashes assume the same
 `COMPOSE_PROFILES` as the `.env` on the host. The command exits non-zero when
 drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and
@@ -408,9 +408,8 @@ Before an outage, from a tailnet-connected client with `curl`, run
 `make check-proxy DOMAIN=<domain> PROXY_IP=<southcom-tailscale-ip>`. This keeps
 the original HTTPS hostnames and validates certificates while directing requests
 to southcom without changing DNS. Initial certificate issuance can take several
-minutes. To include the optional MCP route, set `CHECK_MCP=1` before the command.
-Redirects, authentication challenges and an MCP method-not-allowed
-response count as reachable, not proof of application health.
+minutes. To include probes marked `optional` in `services.toml`, set `CHECK_OPTIONAL=1`
+before the command. Redirects and authentication challenges count as reachable, not proof of application health.
 
 If northcom fails:
 
@@ -507,39 +506,12 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 - Accounts, passkeys, session secrets, workouts, and uploaded media persist in the `opengym_data` Docker volume. Back up the entire volume; stop `opengym-api` while taking a consistent backup. Changing `DOMAIN` changes the passkey hostname and requires new passkeys.
 
 ### Remote MCP (optional)
-- The `opengym-mcp` service wraps upstream's stdio MCP with [Supergateway](https://github.com/supercorp-ai/supergateway), providing Streamable HTTP at `https://gym-mcp.vpn.rsefer.com/mcp`. Clients need Tailscale connectivity and support for remote MCP with a custom authentication header; this is not an OAuth endpoint or a public cloud connector.
-- It reads `opengym_data` read-only and sends workout writes through `https://gym.${DOMAIN}` using a separate paired-account token. It has no published host port. All clients share one openGym profile and can read its data and log workouts; do not distribute the access token to untrusted clients. Read results can be sent to the client's AI provider.
-- Build the image: `docker compose build opengym-mcp`.
-- In the signed-in gym browser app, open Settings > Account > **Pair the mobile app**. Redeem the five-minute code with `docker compose run --rm --no-deps --entrypoint node opengym-mcp mcp/scripts/pair.mjs https://gym.vpn.rsefer.com YOUR-CODE`. Store the printed token as `OPENGYM_MCP_PAIRING_TOKEN` in `.env`, never in Git or a chat. This token grants full account access. It expires after `SESSION_DAYS` (90 by default); upstream's MCP does not renew it automatically. Sign out everywhere revokes it and also unpairs phones.
-- Generate a separate random client token with `openssl rand -hex 32` and store it as `OPENGYM_MCP_ACCESS_TOKEN` in `.env`. Set `OPENGYM_MCP_UID` to the same profile's Account ID if more than one profile exists. Protect `.env` with `chmod 600 .env`.
-- Add `COMPOSE_PROFILES=opengym-mcp` to `.env` so normal updates and boot recovery include the service. Start it with `docker compose up -d opengym-mcp`, then refresh Caddy with `docker compose up -d --no-deps --force-recreate caddy`. Initial certificate issuance can take a few minutes.
-- Configure each client with URL `https://gym-mcp.vpn.rsefer.com/mcp` and header `Authorization: Bearer YOUR-ACCESS-TOKEN`. Use the **client access token**, not the paired-account token. The gateway rejects missing or incorrect tokens with HTTP 401; only `/mcp` is exposed by Caddy.
-- For VS Code, add an HTTP server to its MCP configuration using the editor's secure input prompt:
-
-```json
-{
-  "inputs": [
-    {
-      "id": "opengym-mcp-token",
-      "type": "promptString",
-      "description": "openGym MCP client access token",
-      "password": true
-    }
-  ],
-  "servers": {
-    "opengym": {
-      "type": "http",
-      "url": "https://gym-mcp.vpn.rsefer.com/mcp",
-      "headers": {
-        "Authorization": "Bearer ${input:opengym-mcp-token}"
-      }
-    }
-  }
-}
-```
-
-- Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. The container refuses to start with either token unset. To rotate client access, update `OPENGYM_MCP_ACCESS_TOKEN`, recreate the service, and update clients. To renew workout-write access, pair again, replace `OPENGYM_MCP_PAIRING_TOKEN`, and recreate the service.
-- The Dockerfile pins the upstream source revision and gateway version. Updating the API does not automatically update the MCP source; update its pin and rebuild after checking upstream compatibility.
+- `opengym-mcp` is upstream's official MCP-over-HTTPS container (`ghcr.io/duartesantos8/opengym-mcp`). It is stateless: no data volume and no secrets, and it reads and writes through `opengym-api` using each request's own scoped token. `opengym-app` proxies `https://gym.vpn.rsefer.com/mcp` to it, so there is no separate hostname, Caddy route or host port.
+- Enable it by setting `COMPOSE_PROFILES=mcp` (starts the container) and `MCP=on` (enables it in the app) in `.env`, then `docker compose pull && docker compose up -d`. Without both, `/mcp` answers with a JSON 503. Use `COMPOSE_PROFILES` so normal updates and boot recovery include the service.
+- In the gym app, open Settings > Integrations > API tokens > New token. Tick only the categories the client may see, and "Change directly" only where it may write. The token is shown once. Revoking it stops access immediately.
+- Configure a client with URL `https://gym.vpn.rsefer.com/mcp` and header `Authorization: Bearer ogt_...`. For Claude Code: `claude mcp add --transport http opengym https://gym.vpn.rsefer.com/mcp --header "Authorization: Bearer ogt_..."`.
+- The gym host is reachable only over Tailscale. Hosted connectors (claude.ai, ChatGPT) and upstream's OAuth sign-in call from the vendor's servers, so they cannot reach it and are unsupported here. Use a client on a tailnet device, such as Claude Code or Claude Desktop with a local connection. Read results can be sent to the client's AI provider.
+- Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. `https://gym.vpn.rsefer.com/mcp/health` is the container's health endpoint.
 
 # Tailscale config
 - Custom Tailscale nameservers can cause a troubleshooting loop if DNS is unavailable. Before enabling them, verify both Pi-hole resolvers and retain a way to restore DNS or connect by IP.

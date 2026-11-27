@@ -46,7 +46,7 @@ container = "status-agent:8080"
 #   tailnet                  Instead of container: an HTTPS machine on the tailnet.
 #   checks                   "deploy" (make check-services after deploys) and
 #                            "failover" (make check-proxy).
-#   optional                 Skipped by check-proxy unless CHECK_MCP=1.
+#   optional                 Skipped by check-proxy unless CHECK_OPTIONAL=1.
 
 [services.ai]
 tailnet = "ai"
@@ -124,12 +124,3 @@ dashboard = "health"
 container = "beszel:8090"
 placement = [{ host = "southcom", port = 18090 }]
 checks = ["deploy", "failover"]
-
-[services.gym-mcp]
-path = "/mcp"
-proxy_path = "/mcp"
-container = "opengym-mcp:8000"
-compose = "opengym"
-placement = [{ host = "southcom", port = 18083 }]
-checks = ["failover"]
-optional = true

@@ -29,7 +29,7 @@ class ComposeConfigTests(unittest.TestCase):
         result = subprocess.run(
             ["docker", "compose", "--env-file", ".env.sample",
              "-f", "docker-compose.yml" if host == "single" else f"docker-compose.{host}.yml",
-             "--profile", "opengym-mcp",
+             "--profile", "mcp",
              "config", "--format", "json"],
             cwd=ROOT, env=env, capture_output=True, text=True, check=True,
         )
@@ -80,7 +80,7 @@ class ComposeConfigTests(unittest.TestCase):
             "northcom": {
                 "PIHOLE_UPSTREAM": "pihole:80", "RSS_UPSTREAM": f"{southcom}:18084",
                 "DRAW_UPSTREAM": f"{southcom}:18081", "GYM_UPSTREAM": f"{southcom}:18082",
-                "BESZEL_UPSTREAM": f"{southcom}:18090", "GYM_MCP_UPSTREAM": f"{southcom}:18083",
+                "BESZEL_UPSTREAM": f"{southcom}:18090",
                 "KEEP_UPSTREAM": f"{southcom}:18087",
                 "VAULT_UPSTREAM": f"{southcom}:18088",
                 "STATUS_NORTHCOM_UPSTREAM": "status-agent:8080",
@@ -90,7 +90,7 @@ class ComposeConfigTests(unittest.TestCase):
             "southcom": {
                 "PIHOLE_UPSTREAM": f"{eastcom}:18085", "RSS_UPSTREAM": "rss:80",
                 "DRAW_UPSTREAM": "excalidraw:80", "GYM_UPSTREAM": "opengym-app:80",
-                "BESZEL_UPSTREAM": "beszel:8090", "GYM_MCP_UPSTREAM": "opengym-mcp:8000",
+                "BESZEL_UPSTREAM": "beszel:8090",
                 "KEEP_UPSTREAM": "karakeep:3000",
                 "VAULT_UPSTREAM": "vaultwarden:80",
                 "STATUS_NORTHCOM_UPSTREAM": f"{northcom}:18086",
@@ -165,8 +165,10 @@ class ComposeConfigTests(unittest.TestCase):
         mounts = {v["target"]: v["source"] for v in rss["volumes"]}
         self.assertEqual(mounts["/var/www/FreshRSS/data"], str(ROOT / "data"))
         self.assertEqual(mounts["/var/www/FreshRSS/extensions"], str(ROOT / "extensions"))
-        self.assertEqual(services["opengym-mcp"]["build"]["context"],
-                         str(ROOT / "services/opengym/mcp"))
+        mcp = services["opengym-mcp"]
+        self.assertEqual(mcp["image"], "ghcr.io/duartesantos8/opengym-mcp:latest")
+        self.assertNotIn("ports", mcp)
+        self.assertEqual(services["opengym-app"]["environment"]["MCP_BACKEND"], "opengym-mcp")
         status = services["status-agent"]
         self.assertEqual(status["environment"]["STATUS_HOST"], "southcom")
         self.assertEqual({p["host_ip"] for p in status["ports"]}, {"100.97.91.90"})
@@ -180,7 +182,7 @@ class ComposeConfigTests(unittest.TestCase):
             {("100.97.91.90", "18088", 80)},
         )
         for service in (
-            "beszel", "excalidraw", "karakeep", "opengym-app", "opengym-mcp", "rss", "vaultwarden"
+            "beszel", "excalidraw", "karakeep", "opengym-app", "rss", "vaultwarden"
         ):
             self.assertIn("100.97.91.90", {p["host_ip"] for p in services[service]["ports"]})
 

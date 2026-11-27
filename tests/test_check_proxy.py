@@ -20,7 +20,7 @@ class ProxyCheckTests(unittest.TestCase):
             )
             curl.chmod(0o755)
             env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
-                       TEST_LOG=str(root / "curl.log"), CHECK_MCP="1")
+                       TEST_LOG=str(root / "curl.log"), CHECK_OPTIONAL="1")
             result = subprocess.run(
                 ["sh", str(SCRIPT), "example.com", "100.64.0.3"],
                 env=env, capture_output=True, text=True,
@@ -28,11 +28,10 @@ class ProxyCheckTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("rss.example.com/: unexpected HTTP 502", result.stderr)
             calls = (root / "curl.log").read_text().splitlines()
-            self.assertEqual(len(calls), 12)
+            self.assertEqual(len(calls), 11)
             self.assertTrue(any("gym.example.com:443:100.64.0.3" in call for call in calls))
             self.assertTrue(any("https://pihole.example.com/admin/" in call for call in calls))
             self.assertTrue(any("https://vault.example.com/" in call for call in calls))
-            self.assertTrue(any("https://gym-mcp.example.com/mcp" in call for call in calls))
 
     def test_invalid_proxy_address_fails_before_network_access(self):
         result = subprocess.run(["sh", str(SCRIPT), "example.com", "not-an-ip"],

@@ -54,10 +54,8 @@ services:
 
   opengym-mcp:
     extends:
-      file: services/caddy/generated/southcom.compose.yaml
+      file: services/opengym/compose.yaml
       service: opengym-mcp
-    build:
-      context: ./services/opengym/mcp
 
   karakeep:
     extends:

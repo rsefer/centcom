@@ -78,8 +78,8 @@ class ReloadTests(unittest.TestCase):
                                        "compose build", "compose up -d --remove-orphans"])
         self.assertIn("compose up -d --no-deps --force-recreate caddy", commands)
         routes = (self.root / "services/caddy/generated/routes.caddy").read_text()
-        self.assertIn("gym-mcp.{$DOMAIN}", routes)
-        self.assertIn("handle /mcp {", routes)
+        self.assertIn("gym.{$DOMAIN}", routes)
+        self.assertNotIn("gym-mcp", routes)
 
     def test_generation_failure_stops_before_docker(self):
         (self.root / "services.toml").write_text('hosts = []\n')

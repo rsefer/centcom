@@ -17,7 +17,7 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 probes="$(python3 "$script_dir/services.py" checks failover)"
 tab="$(printf '\t')"
 while IFS="$tab" read -r service path optional; do
-	if [ "$optional" = optional ] && [ "${CHECK_MCP:-0}" != 1 ]; then continue; fi
+	if [ "$optional" = optional ] && [ "${CHECK_OPTIONAL:-0}" != 1 ]; then continue; fi
 	if [ "$service" = dashboard ]; then
 		host="$domain"
 	else
@@ -31,12 +31,8 @@ while IFS="$tab" read -r service path optional; do
 				echo "$host$path: HTTP $status"
 				;;
 			*)
-				if [ "$service" = gym-mcp ] && [ "$status" = 405 ]; then
-					echo "$host$path: HTTP $status"
-				else
-					echo "$host$path: unexpected HTTP $status" >&2
-					failed=1
-				fi
+				echo "$host$path: unexpected HTTP $status" >&2
+				failed=1
 				;;
 		esac
 	else
