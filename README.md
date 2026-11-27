@@ -511,7 +511,7 @@ change DNS. To test an actual outage, arrange a maintenance window separately.
 - In the gym app, open Settings > Integrations > API tokens > New token. Tick only the categories the client may see, and "Change directly" only where it may write. The token is shown once. Revoking it stops access immediately.
 - Configure a client with URL `https://gym.vpn.rsefer.com/mcp` and header `Authorization: Bearer ogt_...`. For Claude Code: `claude mcp add --transport http opengym https://gym.vpn.rsefer.com/mcp --header "Authorization: Bearer ogt_..."`.
 - The gym host is reachable only over Tailscale. Hosted connectors (claude.ai, ChatGPT) and upstream's OAuth sign-in call from the vendor's servers, so they cannot reach it and are unsupported here. Use a client on a tailnet device, such as Claude Code or Claude Desktop with a local connection. Read results can be sent to the client's AI provider.
-- Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. `https://gym.vpn.rsefer.com/mcp/health` is the container's health endpoint.
+- Check `docker compose ps opengym-mcp` and `docker compose logs opengym-mcp` if a client cannot connect. To verify the route, `curl -i -X POST -H 'Content-Type: application/json' -d '{}' https://gym.vpn.rsefer.com/mcp` should return `401` with a JSON error asking for an `ogt_` token. `/mcp/health` is not proxied by `opengym-app` (it only forwards the exact path `/mcp`), so it redirects to the app instead.
 
 # Tailscale config
 - Custom Tailscale nameservers can cause a troubleshooting loop if DNS is unavailable. Before enabling them, verify both Pi-hole resolvers and retain a way to restore DNS or connect by IP.
