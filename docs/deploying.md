@@ -50,6 +50,16 @@ When a commit renames a key, add the new name to every host first and keep the
 old one until the deploy is verified. Rolling back runs the older code, which
 still reads the old name.
 
+### Backing up first
+
+`make deploy BACKUP=1` runs `scripts/backup.sh` on every host after the
+preflight and before any host changes. A failed backup stops the deploy with
+all hosts untouched. Backups stop some services briefly and sync to S3 when
+configured, so this is opt-in. Use it for releases that may migrate data,
+including ones that only pull newer images. The snapshot is the newest
+directory under `~/centcom-backups/` on each host; see [Backups](backups.md)
+to restore it.
+
 ## Rolling back
 
 `make rollback` undoes a bad deploy. Each `make deploy` records the commit a host
@@ -71,7 +81,8 @@ as deploy, checking every host before changing any. It then runs
   `RELOAD_SKIP_PULL=1`, so it does not pull images, and containers keep whatever
   image version they already have. Images tagged `latest` are not reverted;
   pin the version in Compose to roll an application back. Data volumes are
-  never touched, so restore a backup separately if a release migrated data.
+  never touched, so if a release migrated data, restore the snapshot from
+  `make deploy BACKUP=1` (see [Backing up first](#backing-up-first)).
 - The hosts end up behind `origin/main`, which `make check-hosts` reports as drift.
   Fix the problem and `make deploy` to roll forward, or revert the bad commit
   and push it. A second rollback stops rather than flipping back.

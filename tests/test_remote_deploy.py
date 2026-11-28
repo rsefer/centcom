@@ -80,6 +80,31 @@ class RemoteDeployTests(RemoteHostsFixture):
         result = self.deploy(SKIP_ENV_CHECK="1")
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_backup_runs_on_every_host_before_any_deploy(self):
+        result = self.deploy(DEPLOY_BACKUP="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.log.read_text().splitlines(), [
+            "connect northcom", "connect southcom",
+            "connect northcom", "northcom backup.sh",
+            "connect southcom", "southcom backup.sh",
+            "connect northcom", "northcom setup-cron.sh", "northcom reload.sh",
+            "connect southcom", "southcom setup-cron.sh", "southcom reload.sh",
+            "connect southcom", "southcom check-services.py",
+        ])
+
+    def test_failed_backup_stops_before_any_host_changes(self):
+        first = self.head("northcom")
+        self.publish("second")
+        result = self.deploy(DEPLOY_BACKUP="1", BACKUP_FAIL_HOST="southcom")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("reload.sh", self.log.read_text())
+        self.assertEqual(self.head("northcom"), first)
+        self.assertEqual(self.head("southcom"), first)
+
+    def test_no_backup_unless_requested(self):
+        self.assertEqual(self.deploy().returncode, 0)
+        self.assertNotIn("backup.sh", self.log.read_text())
+
     def test_failed_service_check_fails_deployment(self):
         result = self.deploy(CHECK_FAIL="1")
         self.assertNotEqual(result.returncode, 0)

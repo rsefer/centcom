@@ -23,8 +23,8 @@ setup-cron: ## Install or verify the cron jobs
 reload: ## Pull, build, and restart the full stack (run on the Pi)
 	./scripts/reload.sh
 
-deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host] [BRANCH=main]
-	./scripts/remote-deploy.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)"
+deploy: ## Deploy published GitHub changes to all hosts: make deploy [HOST=host] [BRANCH=main] [BACKUP=1]
+	DEPLOY_BACKUP="$(BACKUP)" ./scripts/remote-deploy.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)"
 
 rollback: ## Return hosts to their previous deploy (or a commit) without pulling images: make rollback [HOST=host] [BRANCH=main] [TO=commit]
 	./scripts/remote-rollback.sh "$(or $(HOST),all)" "$(or $(BRANCH),main)" "$(TO)"

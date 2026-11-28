@@ -30,6 +30,10 @@ class RemoteHostsFixture(unittest.TestCase):
             script.write_text('#!/bin/sh\nprintf "%s %s%s\\n" "$TEST_HOST" "' + name +
                               '" "${RELOAD_SKIP_PULL:+ skip-pull}" >> "$TEST_LOG"\n')
             script.chmod(0o755)
+        backup = self.work / "scripts" / "backup.sh"
+        backup.write_text('#!/bin/sh\nprintf "%s backup.sh\\n" "$TEST_HOST" >> "$TEST_LOG"\n'
+                          '[ "$TEST_HOST" != "${BACKUP_FAIL_HOST:-}" ]\n')
+        backup.chmod(0o755)
         (self.work / "scripts" / "check-services.py").write_text(
             "import os\n"
             "with open(os.environ['TEST_LOG'], 'a') as log:\n"

@@ -110,6 +110,19 @@ for host in $HOSTS; do
 REMOTE
 done
 
+# Optional snapshot of every host before any of them changes (make deploy BACKUP=1).
+# A failed backup stops the deploy while all hosts are still untouched.
+if [ -n "${DEPLOY_BACKUP:-}" ]; then
+	for host in $HOSTS; do
+		echo "Backing up $host before deploying"
+		connect "$host" sh -s <<'REMOTE'
+	set -eu
+	cd ~/centcom
+	./scripts/backup.sh
+REMOTE
+	done
+fi
+
 for host in $HOSTS; do
 	echo "Deploying $host"
 	connect "$host" sh -s -- "$TARGET_COMMIT" <<'REMOTE'
