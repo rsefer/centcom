@@ -11,7 +11,9 @@ install-dns-failover.sh). Each run:
    order) and "Override DNS servers" is ON. If none are healthy, override is turned
    OFF so clients fall back to their local resolvers; the nameserver list is left
    as it was so recovery is a single write.
-4. Emails (SMTP) on every host state change, override change, and on repeated
+4. With PROXY_FAILOVER=on, also moves the proxy DNS records between the primary and
+   standby Caddy in Route 53 (see proxy-failover.py).
+5. Emails (SMTP) on every host state change, override change, and on repeated
    Tailscale API failures. Nothing is sent while the state is steady.
 
 Safety: nothing is judged or changed unless this host's own tailscaled is Running,
@@ -53,6 +55,7 @@ def load(name, file):
 policy = load("tailscale_policy", "tailscale-policy.py")
 sync = load("sync_tailscale_dns", "sync-tailscale-dns.py")
 send_email = load("alerts", "alerts.py").send_email
+proxy_failover = load("proxy_failover", "proxy-failover.py")
 
 API_FAILURES_BEFORE_ALERT = 3
 
@@ -228,14 +231,33 @@ def main():
         if state["api_failures"] == API_FAILURES_BEFORE_ALERT:
             messages.append(f"Tailscale DNS could not be reconciled for {API_FAILURES_BEFORE_ALERT} consecutive checks: {error}")
 
+    proxy_messages, proxy_changed = [], None
+    if proxy_failover.enabled(env):
+        try:
+            proxy_messages, proxy_changed = proxy_failover.reconcile(
+                env, state, observe=observe, paused=paused, dry_run=args.dry_run, log=log)
+            state["proxy_failures"] = 0
+        except (RuntimeError, OSError, ValueError) as error:
+            state["proxy_failures"] = state.get("proxy_failures", 0) + 1
+            log(f"Proxy failover problem ({state['proxy_failures']} in a row): {error}")
+            if state["proxy_failures"] == API_FAILURES_BEFORE_ALERT:
+                proxy_messages = [f"Proxy failover could not run for {API_FAILURES_BEFORE_ALERT} "
+                                  f"consecutive checks: {error}"]
+
     if args.dry_run:
         return 0
-    if messages:
-        summary = "\n".join("* " + m for m in messages)
+    if messages or proxy_messages:
+        summary = "\n".join("* " + m for m in messages + proxy_messages)
         up = [h for h, e in hosts.items() if e["up"]]
         status = f"\n\nPi-hole state: {', '.join(f'{h}={'up' if e['up'] else 'DOWN'}' for h, e in hosts.items())}"
-        send_email(env, f"[centcom] DNS {'degraded' if len(up) < len(hosts) else 'status'}: " + ("none healthy" if not up else f"{len(up)}/{len(hosts)} healthy"),
-                   summary + status + f"\n\nChecked from {socket.gethostname()}.\n")
+        if proxy_changed:
+            subject = f"[centcom] proxy failover: DNS now points at the {proxy_changed} proxy"
+        elif proxy_messages and not messages:
+            subject = "[centcom] proxy failover status"
+        else:
+            subject = (f"[centcom] DNS {'degraded' if len(up) < len(hosts) else 'status'}: "
+                       + ("none healthy" if not up else f"{len(up)}/{len(hosts)} healthy"))
+        send_email(env, subject, summary + status + f"\n\nChecked from {socket.gethostname()}.\n")
     directory.mkdir(parents=True, exist_ok=True)
     state_file.write_text(json.dumps(state, indent=1))
     return 0

@@ -58,6 +58,9 @@ exit node; clients pick one in their Tailscale app.
 
 ## DNS failover
 
+The same timer can also switch the proxy DNS records; see
+[Automatic proxy failover](resilience.md#automatic-proxy-failover).
+
 `scripts/dns-failover.py` runs every minute on southcom (not a Pi-hole) via the
 `centcom-dns-failover` timer (`make install-dns-failover` on southcom). It sends a
 real DNS query to each Pi-hole's Tailscale IP and keeps the tailnet's global

@@ -1,6 +1,6 @@
 # Resilience and recovery
 
-Host hardening, self-healing, email alerts, power-outage recovery, proxy failover and outage drills.
+Host hardening, self-healing, email alerts, power-outage recovery, automatic and manual proxy failover and outage drills.
 
 ## Host hardening
 
@@ -104,10 +104,57 @@ not fail the backup.
 - On boot, that script waits for Docker and Tailscale, recreates `caddy_net` if missing, and runs `docker compose up -d --remove-orphans`.
 - Recovery logs are written to `~/centcom/boot-recover.log`.
 
+## Automatic proxy failover
+
+Optional, and off until you set `PROXY_FAILOVER=on` in southcom's `.env`. The
+`centcom-dns-failover` timer (see [DNS failover](networking.md#dns-failover)) then
+also decides which Caddy the DNS records point at and edits them in Route 53 itself,
+doing what [Manual proxy failover](#manual-proxy-failover) describes by hand.
+
+Every minute it makes an HTTPS request to each proxy's Tailscale IP using the
+dashboard's hostname, so the certificate must be valid. A proxy is down after 3
+consecutive failures (`PROXY_DOWN_AFTER`) and up again after 10 consecutive
+successes (`PROXY_UP_AFTER`); the standby needs only 2.
+
+| Primary | Standby | Records point at |
+| --- | --- | --- |
+| up | any | primary (a manual change back to the standby is undone) |
+| down | up | standby |
+| down | down | unchanged: switching cannot help |
+
+- It changes only the dashboard record (`VPN_DOMAIN`) and the wildcard
+  (`*.VPN_DOMAIN`), together in one change batch, the same two records `make
+  dns-records` prints. If either is missing, is an alias or has a routing policy,
+  or points at an address that is not a proxy, nothing changes and you are emailed
+  once. Any other record is left alone; one that points at a proxy address is
+  reported once because it will not fail over.
+- The probe checks that the proxy serves the dashboard, not each application. An
+  application that is down behind a working proxy is down through both proxies.
+- Emails (same SMTP settings as the other alerts) report a proxy going down or
+  recovering, every switch of the records, and 3 consecutive failures to reach Route 53.
+- It uses the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` that Caddy already
+  uses, plus `ROUTE53_HOSTED_ZONE_ID`; the IAM policy under
+  [Public trusted TLS](networking.md#public-trusted-tls-dns-challenge) already
+  allows listing and changing the zone. Southcom's `.env` needs them.
+- **Timing:** about 3 minutes to detect, plus the records' TTL before clients move.
+  Lower the TTL of the two records to 60 seconds in Route 53 to make it about 4
+  minutes in total. Failing back takes 10 minutes of health plus the TTL.
+- Maintenance: `sudo touch /var/lib/centcom-dns-failover/paused` stops all changes
+  (probes and state still update), as for DNS failover. Remove it to resume.
+  `python3 scripts/dns-failover.py --dry-run` probes, reads the zone and reports
+  what it would change without writing anything. Setting `PROXY_FAILOVER=off`
+  disables it. Logs: `journalctl -u centcom-dns-failover`.
+- Southcom is both the checker and the standby. If southcom is down, nothing
+  switches, which is correct because the standby is gone too. If southcom loses its
+  own Tailscale connection it does nothing, as for DNS failover. If only the link
+  between southcom and northcom breaks, southcom sees the primary as down and
+  switches even though clients could still reach it; it switches back after 10
+  minutes of health.
+
 ## Manual proxy failover
 
-The standby proxy runs on southcom but DNS normally points to northcom. Failover
-is **manual**, not automatic. Southcom and its applications, eastcom's Pi-hole,
+The standby proxy runs on southcom but DNS normally points to northcom. Without
+[automatic failover](#automatic-proxy-failover) the switch is **manual**. Southcom and its applications, eastcom's Pi-hole,
 Tailscale, Route 53 access, and a working client DNS resolver remain necessary.
 The dashboard cannot reach northcom's agent during an outage; the northcom DNS
 check will fail until it returns. Eastcom's Pi-hole web interface is a separate

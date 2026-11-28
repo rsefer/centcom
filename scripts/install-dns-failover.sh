@@ -12,6 +12,12 @@ for key in TS_DNS_OAUTH_CLIENT_ID TS_DNS_OAUTH_CLIENT_SECRET DNS_ALERT_FROM DNS_
   grep -q "^$key=." "$ROOT/.env" || echo "warning: $key is not set in .env" >&2
 done
 
+if grep -Eiq '^PROXY_FAILOVER=(on|true|1|yes)' "$ROOT/.env"; then
+  for key in ROUTE53_HOSTED_ZONE_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY VPN_DOMAIN; do
+    grep -q "^$key=." "$ROOT/.env" || echo "warning: $key is not set in .env (needed by PROXY_FAILOVER)" >&2
+  done
+fi
+
 sudo tee /etc/systemd/system/centcom-dns-failover.service > /dev/null <<UNIT
 [Unit]
 Description=centcom Pi-hole to Tailscale DNS failover
