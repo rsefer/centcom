@@ -50,6 +50,36 @@ class RemoteDeployTests(RemoteHostsFixture):
         self.assertEqual(self.previous("southcom"), second)
         self.assertEqual(self.head("southcom"), third)
 
+    def test_new_env_keys_must_exist_on_every_host_before_any_deploy(self):
+        self.publish_file(".env.sample", "KEEP=\nVPN_DOMAIN=\n")
+        self.write_env("northcom", "KEEP=1\nVPN_DOMAIN=example.test\n")
+        self.write_env("southcom", "KEEP=1\n")
+        result = self.deploy()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing keys", result.stderr)
+        self.assertIn("VPN_DOMAIN", result.stderr)
+        self.assertNotIn("KEEP", result.stderr.split("adds to .env.sample:")[1].splitlines()[0])
+        self.assertEqual(self.log.read_text().splitlines(), [
+            "connect northcom", "connect southcom",
+        ])
+
+    def test_only_keys_added_by_the_commit_are_required(self):
+        self.publish_file(".env.sample", "OLD=\n")
+        self.write_env("northcom", "OLD=1\n")
+        self.write_env("southcom", "OLD=1\n")
+        self.assertEqual(self.deploy().returncode, 0)
+        self.log.unlink()
+        self.publish_file(".env.sample", "OLD=\nNEW=\n# COMMENTED=\n")
+        for host in ("northcom", "southcom"):
+            self.write_env(host, "NEW=\n")
+        result = self.deploy()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_env_check_can_be_skipped(self):
+        self.publish_file(".env.sample", "NEW=\n")
+        result = self.deploy(SKIP_ENV_CHECK="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_failed_service_check_fails_deployment(self):
         result = self.deploy(CHECK_FAIL="1")
         self.assertNotEqual(result.returncode, 0)

@@ -38,7 +38,7 @@ class RemoteHostsFixture(unittest.TestCase):
         )
         for host in ("northcom", "southcom"):
             (self.work / f"docker-compose.{host}.yml").write_text("services: {}\n")
-        (self.work / ".gitignore").write_text("compose.yaml\n")
+        (self.work / ".gitignore").write_text("compose.yaml\n.env\n")
         self.git("add", ".")
         self.git("commit", "-m", COMMIT_MESSAGE)
         self.origin = self.root / "origin.git"
@@ -89,6 +89,16 @@ class RemoteHostsFixture(unittest.TestCase):
         self.git("push", "origin", "main")
         return subprocess.check_output(["git", "rev-parse", "HEAD"],
                                        cwd=self.work, text=True).strip()
+
+    def publish_file(self, name, text):
+        """Commit a new version of a file, push it, and return the commit."""
+        (self.work / name).write_text(text)
+        self.git("add", name)
+        self.git("commit", "-m", COMMIT_MESSAGE)
+        self.git("push", "origin", "main")
+
+    def write_env(self, host, text):
+        (self.homes / host / "centcom" / ".env").write_text(text)
 
     def head(self, host):
         return subprocess.check_output(["git", "rev-parse", "HEAD"],

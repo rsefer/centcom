@@ -61,7 +61,7 @@ for host in $HOSTS; do
 	if [ "$TARGET_HOST" = all ]; then
 		expected_host="$host"
 	fi
-	connect "$host" sh -s -- "$TARGET_BRANCH" "$TARGET_COMMIT" "$expected_host" <<'REMOTE'
+	connect "$host" sh -s -- "$TARGET_BRANCH" "$TARGET_COMMIT" "$expected_host" "${SKIP_ENV_CHECK:-}" <<'REMOTE'
 	set -eu
 	cd ~/centcom
 	if [ "$3" != "-" ] &&
@@ -89,6 +89,23 @@ for host in $HOSTS; do
 	if ! systemctl is-active --quiet cron; then
 		echo "Refusing deploy: cron service is not active" >&2
 		exit 1
+	fi
+	# A key the new commit adds to .env.sample (including a renamed one) must
+	# exist in this host's .env; a blank value is enough for optional settings.
+	# Checking now stops the deploy before any host changes.
+	if [ -z "$4" ]; then
+		keys='s/^\([A-Z][A-Z0-9_]*\)=.*/\1/p'
+		old_keys="$(git show HEAD:.env.sample 2>/dev/null | sed -n "$keys")"
+		missing=""
+		for key in $(git show "$2:.env.sample" 2>/dev/null | sed -n "$keys"); do
+			printf '%s\n' "$old_keys" | grep -qx "$key" && continue
+			grep -q "^$key=" .env 2>/dev/null || missing="$missing $key"
+		done
+		if [ -n "$missing" ]; then
+			echo "Refusing deploy: ~/centcom/.env is missing keys this commit adds to .env.sample:$missing" >&2
+			echo "Add them (blank is fine for optional settings), or set SKIP_ENV_CHECK=1." >&2
+			exit 1
+		fi
 	fi
 REMOTE
 done

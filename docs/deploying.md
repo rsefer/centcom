@@ -35,6 +35,21 @@ are not compared by digest across hosts, and hashes assume the same
 drift is found. `make check-hosts HOST=northcom.local` checks one SSH host, and
 skips the symlink expectation like `make deploy`.
 
+### New `.env` keys
+
+Each host's private `.env` is not in git, so a commit that needs a new setting
+(or renames one) would otherwise fail on the host mid-deploy. The preflight
+compares the target commit's `.env.sample` with the host's current one. Any key
+the commit adds, including a rename's new name, must already be a `KEY=` line in
+every host's `~/centcom/.env`, and the deploy stops before changing any host if
+one is missing. A blank value satisfies it for optional settings. Keys the host
+already lacked before this commit, and commented-out samples, are not checked.
+`SKIP_ENV_CHECK=1 make deploy` bypasses the check.
+
+When a commit renames a key, add the new name to every host first and keep the
+old one until the deploy is verified. Rolling back runs the older code, which
+still reads the old name.
+
 ## Rolling back
 
 `make rollback` undoes a bad deploy. Each `make deploy` records the commit a host
