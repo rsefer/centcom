@@ -70,7 +70,9 @@ class RemoteHostsFixture(unittest.TestCase):
             "shift\n"
             'printf "connect %s\\n" "$host" >> "$TEST_LOG"\n'
             '[ "$host" != "${FAIL_HOST:-}" ] || exit 1\n'
-            'HOME="$TEST_HOMES/$host" TEST_HOST="$host" "$@"\n'
+            # Like real ssh, join the arguments into one string for a remote shell
+            # to parse, so an empty argument disappears.
+            'HOME="$TEST_HOMES/$host" TEST_HOST="$host" sh -c "$*"\n'
         )
         ssh.chmod(0o755)
         systemctl = self.bin / "systemctl"

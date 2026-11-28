@@ -75,7 +75,7 @@ for host in $HOSTS; do
 	if [ "$TARGET_HOST" = all ]; then
 		expected_host="$host"
 	fi
-	target="$(connect "$host" sh -s -- "$TARGET_BRANCH" "$TARGET_COMMIT" "$expected_host" <<'REMOTE'
+	target="$(connect "$host" sh -s -- "$TARGET_BRANCH" "${TARGET_COMMIT:--}" "$expected_host" <<'REMOTE'
 	set -eu
 	cd ~/centcom
 	if [ "$3" != "-" ] &&
@@ -91,7 +91,8 @@ for host in $HOSTS; do
 		echo "Refusing rollback: remote working tree has uncommitted changes" >&2
 		exit 1
 	fi
-	if [ -n "$2" ]; then
+	# "-" stands for "no commit given": ssh drops empty arguments.
+	if [ "$2" != "-" ]; then
 		wanted="$2"
 	elif git rev-parse --verify --quiet refs/centcom/previous-deploy >/dev/null; then
 		wanted=refs/centcom/previous-deploy
@@ -129,14 +130,14 @@ fi
 
 for host in $HOSTS; do
 	echo "Rolling back $host"
-	connect "$host" sh -s -- "$TARGET_COMMIT" <<'REMOTE'
+	connect "$host" sh -s -- "${TARGET_COMMIT:--}" <<'REMOTE'
 	set -eu
 	cd ~/centcom
 	if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
 		echo "Refusing rollback: remote working tree changed after preflight" >&2
 		exit 1
 	fi
-	if [ -n "$1" ]; then
+	if [ "$1" != "-" ]; then
 		target="$(git rev-parse --verify "$1^{commit}")"
 	else
 		target="$(git rev-parse --verify "refs/centcom/previous-deploy^{commit}")"

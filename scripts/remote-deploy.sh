@@ -93,7 +93,8 @@ for host in $HOSTS; do
 	# A key the new commit adds to .env.sample (including a renamed one) must
 	# exist in this host's .env; a blank value is enough for optional settings.
 	# Checking now stops the deploy before any host changes.
-	if [ -z "$4" ]; then
+	# ssh joins its arguments into one string, so an empty $4 arrives unset.
+	if [ -z "${4:-}" ]; then
 		keys='s/^\([A-Z][A-Z0-9_]*\)=.*/\1/p'
 		old_keys="$(git show HEAD:.env.sample 2>/dev/null | sed -n "$keys")"
 		missing=""
