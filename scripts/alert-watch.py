@@ -17,6 +17,9 @@ Pi-hole (the host that runs dns-failover.py). It checks
 * each dashboard application's HTTPS URL; redirects and authentication
   challenges count as up, as they do on the dashboard.
 
+Nothing could report the probe host's own failure, so the last other host in
+services.toml (eastcom) checks that one host's status agent and nothing else.
+
 A problem must persist for 3 runs (15 minutes) before probes email, then emails
 once, repeats after 6 hours (24 for backups and self-heal) while it lasts, and
 emails once more when it clears. A message that fails to send is retried on
@@ -154,15 +157,29 @@ def probe_host_name(config, values):
     return next((h for h in config["hosts"] if h not in with_pihole), None)
 
 
-def probe_checks(config, values, host):
-    """Return check dicts for host and application reachability."""
+def watcher_host_name(config, values):
+    """The host that watches the probe host, which cannot report its own failure.
+
+    It is the last host in services.toml other than the probe host (eastcom), and
+    it checks only that one host.
+    """
+    probe = probe_host_name(config, values)
+    others = [h for h in config["hosts"] if h != probe]
+    return others[-1] if probe and others else None
+
+
+def probe_checks(config, values, host, only=None):
+    """Return check dicts for host and application reachability.
+
+    With only=[hosts], check just those hosts' status agents (no applications).
+    """
     domain, port = values.get("VPN_DOMAIN"), config["status"]["port"]
     targets = {}
     for name in config["hosts"]:
         ip = registry.host_ip(config, values, name)
-        if ip:
+        if ip and (only is None or name in only):
             targets[f"host:{name}"] = (f"{name} unreachable", name, ip, port, None)
-    if domain:
+    if domain and only is None:
         for name, path in registry.applications(config).items():
             url = f"https://{name}.{domain}{path}"
             targets[f"app:{name}"] = (f"{name} down", name, None, None, url)
@@ -178,6 +195,9 @@ def probe_checks(config, values, host):
         error = results[key]
         if key.startswith("host:"):
             detail = f"{name}'s status agent at {ip}:{agent_port} is unreachable: {error}"
+            if only is not None:
+                detail += (f"\n  {name} also runs DNS and proxy failover and probes the other hosts, "
+                           f"so none of that is happening and {host} is the only one watching.")
         else:
             detail = f"{name} is failing at {url}: {error}"
         rows.append({"key": key, "label": label, "active": error is not None, "detail": detail,
@@ -264,8 +284,11 @@ def main(argv):
     rows = local_rows(env, state, now, host)
     try:
         config = registry.load()
-        if probe_host_name(config, env) == host:
+        probe = probe_host_name(config, env)
+        if probe == host:
             rows += probe_checks(config, env, host)
+        elif watcher_host_name(config, env) == host:
+            rows += probe_checks(config, env, host, only=[probe])
     except (OSError, ValueError, KeyError) as error:
         log(f"services.toml: {error}")
 

@@ -102,6 +102,22 @@ class Probes(unittest.TestCase):
         self.assertEqual(watch.probe_host_name(self.CONFIG, {}), "southcom")
         self.assertEqual(watch.probe_host_name(self.CONFIG, {"DNS_FAILOVER_HOST": "eastcom"}), "eastcom")
 
+    def test_the_watcher_is_the_last_other_host_and_checks_only_the_probe_host(self):
+        self.assertEqual(watch.watcher_host_name(self.CONFIG, {}), "eastcom")
+        self.assertEqual(watch.watcher_host_name(self.CONFIG, {"DNS_FAILOVER_HOST": "eastcom"}), "southcom")
+        values = {"VPN_DOMAIN": "example.test", "TAILSCALE_IP_NORTHCOM": "100.1.1.1",
+                  "TAILSCALE_IP_SOUTHCOM": "100.1.1.2", "TAILSCALE_IP_EASTCOM": "100.1.1.3"}
+        config = dict(self.CONFIG, services={
+            **self.CONFIG["services"], "rss": {"dashboard": "primary", "title": "RSS", "icon": "i"}})
+        with mock.patch.object(watch, "probe_agent", return_value="refused") as agent, \
+             mock.patch.object(watch, "probe_app") as app:
+            rows = watch.probe_checks(config, values, "eastcom", only=["southcom"])
+        app.assert_not_called()
+        agent.assert_called_once_with("100.1.1.2", 18086)
+        self.assertEqual([r["key"] for r in rows], ["host:southcom"])
+        self.assertIn("also runs DNS and proxy failover", rows[0]["detail"])
+        self.assertIn("eastcom is the only one watching", rows[0]["detail"])
+
     def test_probe_rows_report_each_host_and_application(self):
         config = dict(self.CONFIG, services={
             "pihole": self.CONFIG["services"]["pihole"],
@@ -163,6 +179,26 @@ class Main(unittest.TestCase):
             send = self.run_main(temp)
             subject = send.call_args.args[1]
             self.assertEqual(subject, "[centcom] northcom: backup overdue")
+
+    def test_the_watcher_host_emails_when_the_probe_host_goes_quiet(self):
+        config = dict(Probes.CONFIG)
+        env = {"VPN_DOMAIN": "example.test", "TAILSCALE_IP_SOUTHCOM": "100.1.1.2"}
+        with tempfile.TemporaryDirectory() as temp:
+            sent = []
+            with mock.patch.dict(os.environ, {"CENTCOM_ALERT_STATE": str(Path(temp) / "state")}), \
+                 mock.patch.object(watch.alerts, "settings", return_value=dict(env, BACKUP_ROOT=temp,
+                                   DNS_ALERT_FROM="a@x", DNS_ALERT_TO="b@x", SMTP_HOST="smtp.test")), \
+                 mock.patch.object(watch.socket, "gethostname", return_value="eastcom"), \
+                 mock.patch.object(watch, "SELFHEAL_EVENTS", Path(temp) / "absent"), \
+                 mock.patch.object(watch.registry, "load", return_value=config), \
+                 mock.patch.object(watch, "probe_agent", return_value="timed out"), \
+                 mock.patch.object(watch, "log"), \
+                 mock.patch.object(watch.alerts, "send_email",
+                                   side_effect=lambda *a: sent.append(a) or True):
+                for _ in range(watch.PROBE_CONFIRM):
+                    watch.main([])
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0][1], "[centcom] eastcom: southcom unreachable")
 
     def test_unconfigured_smtp_does_not_nag(self):
         with tempfile.TemporaryDirectory() as temp:

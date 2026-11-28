@@ -63,7 +63,7 @@ them, nothing is sent and nothing fails.
 | Backup failed | `backup.sh`, on the host | Immediately, with the failed parts and the end of `backup.log` |
 | Backup overdue | `alert-watch.py`, on each host | The last success in `~/centcom-backups/.last-success` is over 48 hours old |
 | Self-heal gave up | `alert-watch.py`, on each host | The newest self-heal event is "reboot suppressed" (the dashboard's "Needs attention") |
-| Host or application down | `alert-watch.py`, on one host | Still failing after 3 runs (15 minutes) |
+| Host or application down | `alert-watch.py`, on one host (and eastcom for that host) | Still failing after 3 runs (15 minutes) |
 | Backup never ran, or a host is off | A dead-man's switch (below) | Pings stop arriving |
 
 `alert-watch.py` runs from cron every 5 minutes on every host; `setup-cron.sh`
@@ -79,8 +79,11 @@ three hosts would send three copies. It is `DNS_FAILOVER_HOST` from `.env`, or
 else the first host in `services.toml` without a Pi-hole (southcom). It checks each
 host's status agent (`/healthz`) and each dashboard application's HTTPS URL, with
 the same rule as the dashboard: redirects and authentication challenges count as
-up. If that host itself goes down, nobody probes, so use the dead-man's switch for
-anything that must be noticed.
+up. That host cannot report its own failure, so the last other host in
+`services.toml` (eastcom) checks that one host's status agent and nothing else,
+with the same 15-minute rule, and emails when it goes quiet. This is an alert
+only: DNS failover and proxy failover run on that host and stop while it is down,
+and nothing else takes them over.
 
 Email comes from the hosts, so it cannot report a host that has lost its network
 or power. Self-heal's "reboot suppressed" usually means the network is down, so
