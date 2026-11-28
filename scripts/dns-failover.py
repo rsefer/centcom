@@ -28,12 +28,10 @@ Optional: DNS_PROBE_NAME (default cloudflare.com), DNS_DOWN_AFTER (3), DNS_UP_AF
 """
 import argparse
 import datetime
-import email.message
 import importlib.util
 import json
 import os
 import random
-import smtplib
 import socket
 import struct
 import subprocess
@@ -54,6 +52,7 @@ def load(name, file):
 
 policy = load("tailscale_policy", "tailscale-policy.py")
 sync = load("sync_tailscale_dns", "sync-tailscale-dns.py")
+send_email = load("alerts", "alerts.py").send_email
 
 API_FAILURES_BEFORE_ALERT = 3
 
@@ -166,34 +165,6 @@ def dns_api(config):
         if status != 200:
             raise RuntimeError(f"POST dns/configuration failed: HTTP {status} {text.strip()[:300]}")
     return get, post
-
-
-# --- Email (SMTP, stdlib only) ----------------------------------------------
-
-def send_email(env, subject, body):
-    sender, to = env.get("DNS_ALERT_FROM"), [a.strip() for a in env.get("DNS_ALERT_TO", "").split(",") if a.strip()]
-    host, user, password = env.get("SMTP_HOST"), env.get("SMTP_USERNAME"), env.get("SMTP_PASSWORD")
-    port = int(env.get("SMTP_PORT") or 587)
-    if not (sender and to and host):
-        print("email skipped: set DNS_ALERT_FROM, DNS_ALERT_TO, SMTP_HOST (and SMTP_USERNAME/SMTP_PASSWORD)", file=sys.stderr)
-        return False
-    message = email.message.EmailMessage()
-    message["From"], message["To"], message["Subject"] = sender, ", ".join(to), subject
-    message.set_content(body)
-    try:
-        if port == 465:
-            client = smtplib.SMTP_SSL(host, port, timeout=20)
-        else:
-            client = smtplib.SMTP(host, port, timeout=20)
-            client.starttls()
-        with client:
-            if user:
-                client.login(user, password or "")
-            client.send_message(message)
-        return True
-    except (smtplib.SMTPException, OSError) as error:
-        print(f"email failed: {error}", file=sys.stderr)
-    return False
 
 
 # --- Main ------------------------------------------------------------------
