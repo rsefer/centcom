@@ -2,6 +2,7 @@
 boot-recover.log
 backup.log
 alert-watch.log
+backup-vaultwarden.log
 .op/plugins/aws.json
 /compose.yaml
 /data/

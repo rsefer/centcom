@@ -62,6 +62,7 @@ them, nothing is sent and nothing fails.
 | --- | --- | --- |
 | Backup failed | `backup.sh`, on the host | Immediately, with the failed parts and the end of `backup.log` |
 | Backup overdue | `alert-watch.py`, on each host | The last success in `~/centcom-backups/.last-success` is over 48 hours old |
+| Vaultwarden backup overdue | `alert-watch.py`, on the Vaultwarden host | Once `VAULTWARDEN_AGE_RECIPIENT` is set, the last encrypted backup is over 48 hours old; a failed run also emails from the script |
 | Self-heal gave up | `alert-watch.py`, on each host | The newest self-heal event is "reboot suppressed" (the dashboard's "Needs attention") |
 | Host or application down | `alert-watch.py`, on one host (and eastcom for that host) | Still failing after 3 runs (15 minutes) |
 

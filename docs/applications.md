@@ -10,7 +10,8 @@ uses the local container. This keeps Vaultwarden available through the standby
 proxy during a northcom outage after the documented
 [manual failover](resilience.md#manual-proxy-failover), but there
 is no data replication: a southcom outage takes Vaultwarden offline. The host
-backup includes the complete `vaultwarden_data` volume; stop Vaultwarden before
+backup includes the complete `vaultwarden_data` volume, and a separate [encrypted
+backup](backups.md#vaultwarden-encrypted-backup) of the vault runs daily; stop Vaultwarden before
 restoring it with `scripts/restore.sh`. For initial account creation only, set
 `VAULTWARDEN_SIGNUPS_ALLOWED=true` in `.env`, deploy, create the account, then
 set it back to `false` and deploy again. Keep signups closed.

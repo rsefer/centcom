@@ -93,6 +93,30 @@ class LocalChecks(unittest.TestCase):
             self.assertEqual(rows, {"backup"})
 
 
+class VaultwardenRow(unittest.TestCase):
+    def rows(self, marker_hours, vault=True):
+        with tempfile.TemporaryDirectory() as temp:
+            if marker_hours is not None:
+                (Path(temp) / "vaultwarden").mkdir()
+                (Path(temp) / "vaultwarden" / ".last-success").write_text(stamp(marker_hours) + "\n")
+            return {r["key"]: r for r in watch.local_rows(
+                {"BACKUP_ROOT": temp}, {}, NOW, "southcom", selfheal_path=Path(temp) / "absent", vault=vault)}
+
+    def test_only_checked_when_vaultwarden_backups_are_configured_here(self):
+        self.assertNotIn("vaultwarden-backup", self.rows(100, vault=False))
+
+    def test_overdue_after_48_hours(self):
+        row = self.rows(60)["vaultwarden-backup"]
+        self.assertTrue(row["active"])
+        self.assertIn("The encrypted Vaultwarden backup is overdue", row["detail"])
+        self.assertFalse(self.rows(5)["vaultwarden-backup"]["active"])
+
+    def test_never_run_is_flagged_once_the_watcher_is_old_enough(self):
+        row = self.rows(None)["vaultwarden-backup"]
+        self.assertFalse(row["active"])  # first_seen is now
+        self.assertIn("No successful Vaultwarden backup", row["detail"])
+
+
 class Probes(unittest.TestCase):
     CONFIG = {"hosts": ["northcom", "southcom", "eastcom"], "status": {"port": 18086},
               "proxy": {"primary": "northcom", "standby": "southcom"},

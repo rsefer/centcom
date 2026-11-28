@@ -8,6 +8,8 @@ REBOOT_JOB="@reboot $REBOOT_COMMAND"
 BACKUP_SCHEDULE="15 3 * * *"
 BACKUP_COMMAND="~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"
 BACKUP_JOB="$BACKUP_SCHEDULE $BACKUP_COMMAND"
+VAULT_COMMAND="~/centcom/scripts/backup-vaultwarden.sh >> ~/centcom/backup-vaultwarden.log 2>&1"
+VAULT_JOB="30 4 * * * $VAULT_COMMAND"
 ALERT_COMMAND="python3 ~/centcom/scripts/alert-watch.py >> ~/centcom/alert-watch.log 2>&1"
 ALERT_JOB="*/5 * * * * $ALERT_COMMAND"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -71,6 +73,22 @@ else
 		crontab -l | grep "$ALERT_COMMAND"
 	else
 		echo "✗ Failed to add alert watcher job"
+		exit 1
+	fi
+fi
+
+if ! printf '%s\n' "$SERVICES" | grep -Fxq vaultwarden; then
+	echo "Vaultwarden is not configured on this host; skipping its backup job."
+elif crontab -l 2>/dev/null | grep -F "$VAULT_COMMAND" > /dev/null; then
+	echo "✓ Vaultwarden backup job already exists. Skipping."
+else
+	(crontab -l 2>/dev/null; echo "$VAULT_JOB") | crontab -
+	if [ $? -eq 0 ]; then
+		echo "✓ Vaultwarden backup job successfully added!"
+		echo "Job: $VAULT_JOB"
+		crontab -l | grep "$VAULT_COMMAND"
+	else
+		echo "✗ Failed to add Vaultwarden backup job"
 		exit 1
 	fi
 fi

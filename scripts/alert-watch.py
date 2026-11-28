@@ -7,6 +7,8 @@ Every host checks itself:
 * backups overdue: $BACKUP_ROOT/.last-success (default ~/centcom-backups) is more
   than 48 hours old, the dashboard's threshold. A failed backup also emails at
   once from backup.sh; this catches a backup that never ran.
+* the encrypted Vaultwarden backup (scripts/backup-vaultwarden.sh) is more than 48
+  hours old, on the host that runs Vaultwarden once VAULTWARDEN_AGE_RECIPIENT is set.
 * self-heal gave up: the newest /var/lib/centcom-selfheal/events.log line says
   "reboot suppressed", the dashboard's "Needs attention".
 
@@ -248,7 +250,7 @@ def log(message):
     print(f"{datetime.datetime.now():%F %T} {message}", flush=True)
 
 
-def local_rows(env, state, now, host, selfheal_path=SELFHEAL_EVENTS):
+def local_rows(env, state, now, host, selfheal_path=SELFHEAL_EVENTS, vault=False):
     state.setdefault("first_seen", now)
     root = Path(env.get("BACKUP_ROOT") or Path.home() / "centcom-backups")
     overdue, backup_detail = backup_overdue(read_text(root / ".last-success"), now,
@@ -256,6 +258,15 @@ def local_rows(env, state, now, host, selfheal_path=SELFHEAL_EVENTS):
     rows = [{"key": "backup", "label": "backup overdue", "active": overdue,
              "detail": backup_detail, "recovered": f"Backups are current again on {host}.",
              "confirm": 1, "remind": LOCAL_REMIND}]
+    if vault:
+        overdue, detail = backup_overdue(read_text(root / "vaultwarden" / ".last-success"), now,
+                                         state["first_seen"], host)
+        detail = (detail.replace("Backups are overdue", "The encrypted Vaultwarden backup is overdue")
+                  .replace("No successful backup", "No successful Vaultwarden backup"))
+        rows.append({"key": "vaultwarden-backup", "label": "Vaultwarden backup overdue",
+                     "active": overdue, "detail": detail,
+                     "recovered": f"The Vaultwarden backup is current again on {host}.",
+                     "confirm": 1, "remind": LOCAL_REMIND})
     events = read_text(selfheal_path)
     if events is not None:
         attention, detail = selfheal_attention(events.splitlines(), host)
@@ -281,16 +292,24 @@ def main(argv):
         state = {}
     tracked = state.setdefault("checks", {})
 
-    rows = local_rows(env, state, now, host)
+    config = None
     try:
         config = registry.load()
-        probe = probe_host_name(config, env)
-        if probe == host:
-            rows += probe_checks(config, env, host)
-        elif watcher_host_name(config, env) == host:
-            rows += probe_checks(config, env, host, only=[probe])
-    except (OSError, ValueError, KeyError) as error:
+    except (OSError, ValueError) as error:
         log(f"services.toml: {error}")
+    # The encrypted Vaultwarden backup only exists once a recipient key is configured.
+    vault = bool(config and env.get("VAULTWARDEN_AGE_RECIPIENT") and host in {
+        p["host"] for p in config["services"].get("vaultwarden", {}).get("placement", [])})
+    rows = local_rows(env, state, now, host, vault=vault)
+    if config:
+        try:
+            probe = probe_host_name(config, env)
+            if probe == host:
+                rows += probe_checks(config, env, host)
+            elif watcher_host_name(config, env) == host:
+                rows += probe_checks(config, env, host, only=[probe])
+        except (OSError, ValueError, KeyError) as error:
+            log(f"services.toml: {error}")
 
     due = evaluate(tracked, rows, now)
     if due:

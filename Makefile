@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy rollback check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss freshrss-categories backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy rollback check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss freshrss-categories backup backup-vaultwarden backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -85,6 +85,9 @@ freshrss-categories: ## Mark identical titles/GUIDs read in every FreshRSS categ
 
 backup: ## Back up all persistent data now (run on the Pi)
 	./scripts/backup.sh
+
+backup-vaultwarden: ## Make an encrypted Vaultwarden backup now (run on the Pi; needs VAULTWARDEN_AGE_RECIPIENT)
+	./scripts/backup-vaultwarden.sh
 
 backup-infra: ## Deploy S3 backup bucket + IAM policy: make backup-infra BUCKET=name IAM_USER=name [DAYS=100] (admin AWS creds)
 	./scripts/backup-infra.sh $(BUCKET) $(IAM_USER) $(or $(DAYS),100)
