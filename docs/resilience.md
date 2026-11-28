@@ -64,7 +64,6 @@ them, nothing is sent and nothing fails.
 | Backup overdue | `alert-watch.py`, on each host | The last success in `~/centcom-backups/.last-success` is over 48 hours old |
 | Self-heal gave up | `alert-watch.py`, on each host | The newest self-heal event is "reboot suppressed" (the dashboard's "Needs attention") |
 | Host or application down | `alert-watch.py`, on one host (and eastcom for that host) | Still failing after 3 runs (15 minutes) |
-| Backup never ran, or a host is off | A dead-man's switch (below) | Pings stop arriving |
 
 `alert-watch.py` runs from cron every 5 minutes on every host; `setup-cron.sh`
 (and so `make deploy`) installs it and it logs to `~/centcom/alert-watch.log`.
@@ -88,19 +87,6 @@ and nothing else takes them over.
 Email comes from the hosts, so it cannot report a host that has lost its network
 or power. Self-heal's "reboot suppressed" usually means the network is down, so
 that email arrives once the connection returns.
-
-### Dead-man's switch
-
-Set `BACKUP_PING_URL` in `.env` to a URL from a service such as
-[healthchecks.io](https://healthchecks.io). `backup.sh` requests it after each
-successful backup and requests it with `/fail` added to the path after a failed
-one. The service emails you when the ping does not arrive on schedule, which
-covers a host that is off, a cron job that stopped, and a script that crashed
-before it could email. Give each host its own check by putting `{host}` in the
-URL, which becomes the short hostname, for example
-`https://hc-ping.com/<project ping key>/centcom-backup-{host}?create=1`. Set a
-period of 1 day and a grace time of a few hours on the check. A failed ping does
-not fail the backup.
 
 ## Power outage recovery
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.

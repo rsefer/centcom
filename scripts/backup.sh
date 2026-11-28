@@ -8,12 +8,8 @@
 #   BACKUP_RETENTION  Days to retain local backups (default: 100)
 #   BACKUP_S3_BUCKET  S3 bucket name; S3 sync is skipped when unset
 #   BACKUP_S3_PREFIX  Key prefix inside the bucket (default: centcom)
-#   BACKUP_PING_URL   Dead-man's-switch URL (for example a healthchecks.io check).
-#                     Requested after a successful backup, with /fail added to the
-#                     path after a failed one. "{host}" becomes the short hostname,
-#                     so one shared .env can serve every host.
 #
-# A failed backup also emails DNS_ALERT_TO (see scripts/alerts.py), and a successful
+# A failed backup emails DNS_ALERT_TO (see scripts/alerts.py), and a successful
 # one records the time in $BACKUP_ROOT/.last-success for scripts/alert-watch.py.
 
 set -eu
@@ -33,23 +29,9 @@ if [ -f .env ]; then
 	BACKUP_RETENTION="${BACKUP_RETENTION:-$(env_get BACKUP_RETENTION)}"
 	BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-$(env_get BACKUP_S3_BUCKET)}"
 	BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-$(env_get BACKUP_S3_PREFIX)}"
-	BACKUP_PING_URL="${BACKUP_PING_URL:-$(env_get BACKUP_PING_URL)}"
 fi
 
-# Alerts must never change the backup's own result.
-ping_backup() {
-	[ -n "${BACKUP_PING_URL:-}" ] || return 0
-	if ! command -v curl >/dev/null 2>&1; then
-		echo "curl not found; skipping the backup ping" >&2
-		return 0
-	fi
-	ping_base="$(printf '%s' "${BACKUP_PING_URL%%\?*}" | sed "s|{host}|$(hostname -s)|g")"
-	ping_query="${BACKUP_PING_URL#"${BACKUP_PING_URL%%\?*}"}"
-	curl -fsS -m 10 --retry 3 -o /dev/null "$ping_base$1$ping_query" ||
-		echo "Backup ping to $ping_base$1 failed" >&2
-	return 0
-}
-
+# Alerting must never change the backup's own result.
 notify_failure() {
 	python3 "$SCRIPT_DIR/alerts.py" "[centcom] backup FAILED on $(hostname -s)" <<ALERT || true
 The backup on $(hostname -s) exited with status $1 at $(date '+%F %T').
@@ -67,7 +49,6 @@ on_exit() {
 		restart_services || true
 	fi
 	if [ "$status" -ne 0 ]; then
-		ping_backup /fail
 		notify_failure "$status"
 	fi
 	exit "$status"
@@ -341,6 +322,5 @@ docker run --rm -v centcom_status_data:/status alpine sh -c '
 ' sh "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$offsite"
 
 date -u +%Y-%m-%dT%H:%M:%SZ > "$BACKUP_ROOT/.last-success"
-ping_backup ""
 
 echo "Backup completed successfully"
