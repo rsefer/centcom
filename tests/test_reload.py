@@ -26,7 +26,8 @@ class ReloadTests(unittest.TestCase):
             "crontab": (
                 'printf "%s\\n" '
                 '"~/centcom/scripts/boot-recover.sh >> ~/centcom/boot-recover.log 2>&1" '
-                '"~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"\n'
+                '"~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1" '
+                '"*/5 * * * * python3 ~/centcom/scripts/alert-watch.py >> ~/centcom/alert-watch.log 2>&1"\n'
             ),
             "docker": (
                 'if [ "$1" = compose ]; then\n'

@@ -26,7 +26,7 @@ keep the project name `centcom` so named volumes are shared with the full stack.
 | [Hosts and services registry](docs/registry.md) | `services.toml` and the files generated from it |
 | [Dashboard](docs/dashboard.md) | The landing page, Live status and the status agents |
 | [Networking, DNS and TLS](docs/networking.md) | Pi-hole sync, Tailscale policy, DNS failover, DNS records, certificates |
-| [Resilience and recovery](docs/resilience.md) | Host hardening, self-healing, power outages, manual proxy failover, outage drills |
+| [Resilience and recovery](docs/resilience.md) | Host hardening, self-healing, email alerts, power outages, manual proxy failover, outage drills |
 | [Backups](docs/backups.md) | What is backed up, S3 setup, restoring |
 | [Applications](docs/applications.md) | Vaultwarden, Beszel, Excalidraw, openGym |
 

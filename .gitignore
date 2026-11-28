@@ -1,6 +1,7 @@
 .env
 boot-recover.log
 backup.log
+alert-watch.log
 .op/plugins/aws.json
 /compose.yaml
 /data/

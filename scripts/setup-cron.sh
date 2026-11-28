@@ -8,6 +8,8 @@ REBOOT_JOB="@reboot $REBOOT_COMMAND"
 BACKUP_SCHEDULE="15 3 * * *"
 BACKUP_COMMAND="~/centcom/scripts/backup.sh >> ~/centcom/backup.log 2>&1"
 BACKUP_JOB="$BACKUP_SCHEDULE $BACKUP_COMMAND"
+ALERT_COMMAND="python3 ~/centcom/scripts/alert-watch.py >> ~/centcom/alert-watch.log 2>&1"
+ALERT_JOB="*/5 * * * * $ALERT_COMMAND"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$(dirname "$SCRIPT_DIR")" || exit 1
 python3 scripts/services.py generate || exit 1
@@ -55,6 +57,20 @@ else
 		crontab -l | grep "$BACKUP_COMMAND"
 	else
 		echo "✗ Failed to add backup job"
+		exit 1
+	fi
+fi
+
+if crontab -l 2>/dev/null | grep -F "$ALERT_COMMAND" > /dev/null; then
+	echo "✓ Alert watcher job already exists. Skipping."
+else
+	(crontab -l 2>/dev/null; echo "$ALERT_JOB") | crontab -
+	if [ $? -eq 0 ]; then
+		echo "✓ Alert watcher job successfully added!"
+		echo "Job: $ALERT_JOB"
+		crontab -l | grep "$ALERT_COMMAND"
+	else
+		echo "✗ Failed to add alert watcher job"
 		exit 1
 	fi
 fi

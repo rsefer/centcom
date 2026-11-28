@@ -1,6 +1,6 @@
 # Resilience and recovery
 
-Host hardening, self-healing, power-outage recovery, proxy failover and outage drills.
+Host hardening, self-healing, email alerts, power-outage recovery, proxy failover and outage drills.
 
 ## Host hardening
 
@@ -50,6 +50,54 @@ network. After consecutive failed minutes:
   power cut.
 - Dry run: `sudo SELFHEAL_DRY_RUN=1 /usr/local/sbin/centcom-self-heal` logs actions
   without performing them.
+
+## Alerts
+
+The dashboard only helps while someone has it open, so these send email too.
+They use the SMTP settings the DNS failover already needs (`SMTP_*`,
+`DNS_ALERT_FROM`, `DNS_ALERT_TO` in `.env`; see `scripts/alerts.py`). Without
+them, nothing is sent and nothing fails.
+
+| What | Who sends it | When |
+| --- | --- | --- |
+| Backup failed | `backup.sh`, on the host | Immediately, with the failed parts and the end of `backup.log` |
+| Backup overdue | `alert-watch.py`, on each host | The last success in `~/centcom-backups/.last-success` is over 48 hours old |
+| Self-heal gave up | `alert-watch.py`, on each host | The newest self-heal event is "reboot suppressed" (the dashboard's "Needs attention") |
+| Host or application down | `alert-watch.py`, on one host | Still failing after 3 runs (15 minutes) |
+| Backup never ran, or a host is off | A dead-man's switch (below) | Pings stop arriving |
+
+`alert-watch.py` runs from cron every 5 minutes on every host; `setup-cron.sh`
+(and so `make deploy`) installs it and it logs to `~/centcom/alert-watch.log`.
+It prints nothing while all is well. An alert emails once, repeats after 24 hours
+(6 for hosts and applications) while the problem lasts, and emails once more when
+it clears. A message that fails to send is retried on the next run. State lives
+in `~/.local/state/centcom-alerts`; delete it to reset. `python3
+scripts/alert-watch.py --dry-run` shows what would be sent.
+
+Only one host probes the others, because a dead host cannot report itself and
+three hosts would send three copies. It is `DNS_FAILOVER_HOST` from `.env`, or
+else the first host in `services.toml` without a Pi-hole (southcom). It checks each
+host's status agent (`/healthz`) and each dashboard application's HTTPS URL, with
+the same rule as the dashboard: redirects and authentication challenges count as
+up. If that host itself goes down, nobody probes, so use the dead-man's switch for
+anything that must be noticed.
+
+Email comes from the hosts, so it cannot report a host that has lost its network
+or power. Self-heal's "reboot suppressed" usually means the network is down, so
+that email arrives once the connection returns.
+
+### Dead-man's switch
+
+Set `BACKUP_PING_URL` in `.env` to a URL from a service such as
+[healthchecks.io](https://healthchecks.io). `backup.sh` requests it after each
+successful backup and requests it with `/fail` added to the path after a failed
+one. The service emails you when the ping does not arrive on schedule, which
+covers a host that is off, a cron job that stopped, and a script that crashed
+before it could email. Give each host its own check by putting `{host}` in the
+URL, which becomes the short hostname, for example
+`https://hc-ping.com/<project ping key>/centcom-backup-{host}?create=1`. Set a
+period of 1 day and a grace time of a few hours on the check. A failed ping does
+not fail the backup.
 
 ## Power outage recovery
 - `scripts/setup.sh` installs an `@reboot` cron job that runs `scripts/boot-recover.sh`.
