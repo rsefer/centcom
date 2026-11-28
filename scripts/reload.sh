@@ -68,3 +68,7 @@ for service in caddy rss pihole; do
 		wait_for_service "$service" 90
 	fi
 done
+# Give new FreshRSS categories the duplicate-title filter. Non-fatal.
+if printf '%s\n' "$services" | grep -Fxq rss; then
+	sh scripts/freshrss-category-defaults.sh || echo "Warning: FreshRSS category defaults failed"
+fi

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy rollback check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss backup backup-infra test dashboard-test dashboard-build
+.PHONY: new-host provision policy-diff policy-check policy-apply help setup harden setup-cron reload deploy rollback check-hosts check-services sync-tailscale-ips check-tailscale-dns sync-tailscale-dns install-dns-failover check-proxy generate dns-records boot-recover refresh-rss freshrss-categories backup backup-infra test dashboard-test dashboard-build
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -79,6 +79,9 @@ boot-recover: ## Run the boot recovery routine manually (run on the Pi)
 
 refresh-rss: ## Trigger a FreshRSS feed refresh (run on the Pi)
 	./services/freshrss/refresh-rss.sh
+
+freshrss-categories: ## Mark identical titles/GUIDs read in every FreshRSS category (run on the Pi): make freshrss-categories [DRY_RUN=1] [CATEGORY_DEDUP_N=100]
+	DRY_RUN="$(DRY_RUN)" CATEGORY_DEDUP_N="$(or $(CATEGORY_DEDUP_N),100)" ./scripts/freshrss-category-defaults.sh
 
 backup: ## Back up all persistent data now (run on the Pi)
 	./scripts/backup.sh
