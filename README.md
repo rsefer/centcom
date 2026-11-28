@@ -9,8 +9,9 @@ Operational scripts live in `scripts/`, and the FreshRSS updater lives in
 e.g. `make deploy`, `make reload`, or `make setup`.
 
 Each application is organized under `services/` with its own `compose.yaml`.
-The root `docker-compose.yml` includes those files so the existing `docker compose`
-commands continue to manage the full stack. This uses Docker Compose v2.20+;
+The root `compose.single.yml` includes those files for a single-host install: select
+it with `ln -s compose.single.yml compose.yaml` and the usual `docker compose`
+commands manage the full stack. This uses Docker Compose v2.20+;
 eastcom's host configuration requires v2.24.4+.
 To operate on one application directly, run
 `docker compose --env-file .env -p centcom -f services/<app>/compose.yaml up -d`;

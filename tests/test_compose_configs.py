@@ -28,7 +28,7 @@ class ComposeConfigTests(unittest.TestCase):
                    PIHOLE_EASTCOM_PASSWORD="replica-test", VPN_DOMAIN="example.com")
         result = subprocess.run(
             ["docker", "compose", "--env-file", ".env.sample",
-             "-f", "docker-compose.yml" if host == "single" else f"docker-compose.{host}.yml",
+             "-f", "compose.single.yml" if host == "single" else f"docker-compose.{host}.yml",
              "--profile", "mcp",
              "config", "--format", "json"],
             cwd=ROOT, env=env, capture_output=True, text=True, check=True,

@@ -4,9 +4,11 @@ How the hosts are laid out, how to provision or replace one, and the single-host
 
 ## Multiple hosts
 
-The original `docker-compose.yml` remains available for a single host. For the
+`compose.single.yml` is the stack for a single host (see
+[Single-host installation](#single-host-installation)). For the
 split deployment, use the same repository, private `.env`, and `centcom`
-project name on each host. Create a host-specific `compose.yaml` symlink:
+project name on each host. Create a host-specific `compose.yaml` symlink. Keep no
+`docker-compose.yml` beside it, or `docker compose` warns about multiple config files:
 Each host file extends the shared service definitions under `services/`.
 
 | Host | Symlink target | Services |
@@ -100,4 +102,4 @@ adding the single-host cron jobs. Run it as the intended login user (not root).
 7. Fill in `.env`
 	- `TAILSCALE_IP` is the host's Tailscale IPv4 address, available from `tailscale ip -4`
 	- `GO_LINK_TS_AUTHKEY` is the GoLinks auth key
-8. Run `docker compose up -d --remove-orphans` to remove any previously deployed TSDProxy container.
+8. Select the single-host stack with `ln -s compose.single.yml compose.yaml`, then run `docker compose up -d --remove-orphans` to remove any previously deployed TSDProxy container.
